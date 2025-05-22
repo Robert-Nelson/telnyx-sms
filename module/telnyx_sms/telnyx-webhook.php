@@ -1,5 +1,12 @@
 <?php
-require_once "../include/TelnyxMessage.class.php";
+$bootstrap_settings = array();
+$bootstrap_settings['freepbx_auth'] = false;
+include '/etc/freepbx.conf';
+
+global $amp_conf;
+
+const APP_DIR = '/var/www/html/admin/modules/telnyx_sys';
+require_once APP_DIR . '/TelnyxMessage.class.php';
 
 $signature = $_SERVER['HTTP_TELNYX_SIGNATURE_ED25519'];
 $timestamp = $_SERVER['HTTP_TELNYX_TIMESTAMP'];

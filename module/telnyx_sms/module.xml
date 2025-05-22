@@ -1,0 +1,41 @@
+<module>
+  <rawname>telnyx_sms</rawname>
+  <name>Telnyx SMS</name>
+  <version>0.99.0</version>
+  <publisher>Robert Nelson &lt;robert-telnyx-sms&gt;</publisher>
+  <license>AGPLv3</license>
+  <changelog>*0.99.0* Initial release</changelog>
+  <category>Connectivity</category>
+  <description>SMS handling using provider Telnyx</description>
+  <menuitems>
+    <telnyx_sms>Telnyx SMS</telnyx_sms>
+  </menuitems>
+  <supported>13.0</supported>
+  <database>
+    <table name="smsnumbers">
+      <field name="ID" type="integer" primarykey="true" autoincrement="true"/>
+      <field name="Phone" type="text"/>
+      <key name="Phone" type="unique">
+        <column name="Phone"/>
+      </key>
+    </table>
+    <table name="smsextens">
+      <field name="ID" type="integer" primarykey="true" autoincrement="true"/>
+      <field name="Phone_ID" type="integer"/>
+      <field name="Exten" type="text"/>
+      <key name="UC_Phone_ID_Exten" type="unique">
+        <column name="Phone_ID"/>
+        <column name="Exten"/>
+      </key>
+    </table>
+    <table name="smscid">
+      <field name="ID" type="integer" primarykey="true" autoincrement="true"/>
+      <field name="Exten" type="text"/>
+      <field name="Phone_ID" type="integer"/>
+      <key name="UC_Exten_Phone_ID" type="unique">
+        <column name="Exten"/>
+        <column name="Phone_ID"/>
+      </key>
+    </table>
+  </database>
+</module>

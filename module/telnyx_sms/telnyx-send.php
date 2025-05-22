@@ -1,5 +1,6 @@
 <?php
-require_once '../include/TelnyxMessage.class.php';
+const APP_DIR = '/var/www/html/admin/modules/telnyx_sys';
+require_once APP_DIR . '/TelnyxMessage.class.php';
 
 if (str_starts_with($_SERVER['REMOTE_ADDR'], '127.') || $_SERVER['REMOTE_ADDR'] == '::1') {
   $from = $_GET["from"];
