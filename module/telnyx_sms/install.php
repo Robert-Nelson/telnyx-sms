@@ -83,7 +83,7 @@ if (is_resource($process)) {
   echo $pdf_content;
 
   $descriptorspec = array(
-      0 => array('file', 'TElnyX_messages.sql', 'r'),
+      0 => array('file', 'telnyx_messages.sql', 'r'),
       1 => array('pipe', "w"),
       2 => array("file", "/tmp/mysql.err", "a")
   );
