@@ -62,7 +62,7 @@ $desc_specs = array(
 
 $pipes = array();
 
-$process = proc_open("/usr/bin/mysql". $desc_specs, $pipes);
+$process = proc_open("/usr/bin/mysql", $desc_specs, $pipes);
 
 if (is_resource($process)) {
   fwrite($pipes[0], $grantAll);
