@@ -12,7 +12,7 @@ function telnyx_sms_get_config($engine)
   if (isset($core_conf) && is_a($core_conf, "core_conf")) {
     $section = 'telnyxsmsdb';
     $core_conf->addResOdbc($section, ['enabled' => 'yes']);
-    $core_conf->addResOdbc($section, ['dsn' => 'MySQL-telnyxsmsdb']);
+    $core_conf->addResOdbc($section, ['dsn' => 'MySQL-telnyx_messages']);
     $core_conf->addResOdbc($section, ['pre-connect' => 'yes']);
     if ((version_compare($version, "14.0", "lt") && version_compare($version, "13.14.0", "ge")) || (version_compare($version, "14.0", "ge") && version_compare($version, "14.3.0", "ge"))) {
       $core_conf->addResOdbc($section, ['max_connections' => '5']);
@@ -22,7 +22,6 @@ function telnyx_sms_get_config($engine)
     }
     $core_conf->addResOdbc($section, ['username' => !empty($amp_conf['TSMSDBUSER']) ? $amp_conf['TSMSDBUSER'] : $amp_conf['AMPDBUSER']]);
     $core_conf->addResOdbc($section, ['password' => !empty($amp_conf['TSMSDBPASS']) ? $amp_conf['TSMSDBPASS'] : $amp_conf['AMPDBPASS']]);
-    $core_conf->addResOdbc($section, ['database' => !empty($amp_conf['TSMSDBNAME']) ? $amp_conf['TSMSDBNAME'] : 'asteriskTSMSDB']);
+    $core_conf->addResOdbc($section, ['database' => !empty($amp_conf['TSMSDBNAME']) ? $amp_conf['TSMSDBNAME'] : 'telnyx_messages']);
   }
-  $astdb->get();
 }
