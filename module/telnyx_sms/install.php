@@ -24,85 +24,159 @@ if (!empty($amp_conf["TSMSDBHOST"]) && !empty($amp_conf["TSMSDBTYPE"])) {
   $db_pass = empty($amp_conf["TSMSDBPASS"]) ? $amp_conf["AMPDBPASS"] : $amp_conf["TSMSDBPASS"];
   $datasource = $db_type . '://' . $db_user . ':' . $db_pass . '@' . $db_host . $db_port . '/' . $db_name;
   $dbtsms = DB::connect($datasource); // attempt connection
-  if(DB::isError($dbtsms)) {
+  if (DB::isError($dbtsms)) {
     die_freepbx($dbtsms->getDebugInfo());
   }
   $dbtsms = null;
 }
 
-if (! function_exists("out")) {
-  function out($text) {
-    echo $text."<br />";
-  }
-}
+// if (! function_exists("out")) {
+//   function out($text):void {
+//      echo $text."<br />";
+//   }
+// }
 
 global $amp_conf;
 
 $db_hash = ['mysql' => 'mysql', 'postgres' => 'pgsql'];
 $dbt = !empty($dbt) ? $dbt : 'mysql';
 $db_type = $db_hash[$dbt];
-$db_table_name = !empty($db_table) ? $db_table : "cdr";
 $db_name = !empty($db_name) ? $db_name : "telnyx_messages";
 $db_host = empty($db_host) ?  $amp_conf['AMPDBHOST'] : $db_host;
 $db_port = empty($db_port) ? '' :  ';port=' . $db_port;
 $db_user = empty($db_user) ? $amp_conf['AMPDBUSER'] : $db_user;
 $db_pass = empty($db_pass) ? $amp_conf['AMPDBPASS'] : $db_pass;
 
-//$pdo = new \Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name,$db_user,$db_pass);
-$pdo = new \Database($db_type.':host='.$db_host.$db_port);
+$id_out = shell_exec("/usr/bin/id");
+dbug("id", $id_out, 1);
+
+$grantAll = "GRANT ALL ON $db_name.* TO $db_user@lcalhost;";
+
+$flush = "FLUSH PRIVILEGES;";
+
+$desc_specs = array(
+    0 => array("pipe", "r"),
+    1 => array("pipe", "w"),
+    2 => array("pipe", "w"),
+);
+
+$pipes = array();
+
+$process = proc_open("/usr/bin/mysql". $desc_specs, $pipes);
+
+if (is_resource($process)) {
+  fwrite($pipes[0], $grantAll);
+  fwrite($pipes[0], $flush);
+  fclose($pipes[0]);
+}
+
+$output = stream_get_contents($pipes[1]);
+fclose($pipes[1]);
+
+$errs = stream_get_contents($pipes[2]);
+fclose($pipes[2]);
+
+$return = proc_close($process);
+
+dbug("Privileges - result", $return, 1);
+dbug("Privileges - stdout", $output, 1);
+dbug("Privileges - stderr", $errs, 1);
+
+//$pdo = new Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name,$db_user,$db_pass);
+$pdo = new Database($db_type.':host='.$db_host.$db_port);
 
 $createdb = "
 CREATE DATABASE IF NOT EXISTS $db_name
  CHARACTER SET = 'utf8mb4'
- COLLATE = 'utf8mb4_general_ci';
-CREATE USER IF NOT EXISTS '$db_user'@'localhost' IDENTIFIED BY '$db_pass';
-GRANT ALL ON `$db_name`.* TO '$db_user'@'localhost';
-FLUSH PRIVILEGES;";
+ COLLATE = 'utf8mb4_general_ci';";
 
-$cmd = "mysql";
+$count = $pdo->exec($createdb);
 
-$descriptorspec = array(
-    0 => array("pipe", "r"),
-    1 => array("pipe", "w"),
-    2 => array("file", "/tmp/mysql.err", "w")
+if ($count === false) {
+  out("Unable to create $db_name, code = ".$pdo->errorCode()."(".$pdo->errorInfo().")");
+  return 1;
+}
+
+$pdo = new Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name);
+
+$CreateTables = array(
+    "CREATE TABLE IF NOT EXISTS TelnyxMessageProfile (
+        id INTEGER AUTO_INCREMENT PRIMARY KEY,
+        value TEXT UNIQUE);",
+    "CREATE TABLE IF NOT EXISTS TelnyxMessageDirection (
+        id INTEGER AUTO_INCREMENT PRIMARY KEY,
+        value TEXT UNIQUE);",
+    "CREATE TABLE IF NOT EXISTS TelnyxCarrier (
+        id INTEGER AUTO_INCREMENT PRIMARY KEY,
+        value TEXT UNIQUE);",
+    "CREATE TABLE IF NOT EXISTS TelnyxLineType (
+        id INTEGER AUTO_INCREMENT PRIMARY KEY,
+        value TEXT UNIQUE);",
+    "CREATE TABLE IF NOT EXISTS TelnyxEndpoint (
+        id INTEGER AUTO_INCREMENT PRIMARY KEY,
+        phone_number TEXT UNIQUE,
+        carrier_id INTEGER,
+        line_type_id INTEGER,
+        INDEX (carrier_id),
+        INDEX (line_type_id),
+        CONSTRAINT FOREIGN KEY (carrier_id) REFERENCES TelnyxCarrier (id)
+          ON DELETE RESTRICT,
+        CONSTRAINT FOREIGN KEY (line_type_id) REFERENCES TelnyxLineType (id)
+          ON DELETE RESTRICT);",
+    "CREATE TABLE IF NOT EXISTS TelnyxMessage (
+        id INTEGER AUTO_INCREMENT PRIMARY KEY,
+        profile_id INTEGER NOT NULL,
+        message_id INTEGER NOT NULL UNIQUE,
+        direction_id INTEGER NOT NULL,
+        cost_amount REAL,
+        cost_currency TEXT,
+        received_time INTEGER,
+        sent_time INTEGER,
+        completed_time INTEGER,
+        body_text TEXT,
+        INDEX (profile_id),
+        INDEX (direction_id),
+        CONSTRAINT FOREIGN KEY (profile_id) REFERENCES TelnyxMessageProfile (id)
+          ON DELETE RESTRICT,
+        CONSTRAINT FOREIGN KEY (direction_id) REFERENCES TelnyxMessageDirection (id)
+          ON DELETE RESTRICT);",
+    "CREATE TABLE IF NOT EXISTS TelnyxEndpointUsage (
+        id INTEGER AUTO_INCREMENT PRIMARY KEY,
+        value TEXT UNIQUE);",
+    "CREATE TABLE IF NOT EXISTS TelnyxEndpointMap (
+        id INTEGER AUTO_INCREMENT PRIMARY KEY,
+        usage_id INTEGER,
+        message_id INTEGER,
+        endpoint_id INTEGER,
+        delivery_status TEXT,
+        INDEX (usage_id),
+        INDEX (message_id),
+        INDEX (endpoint_id),
+        CONSTRAINT FOREIGN KEY (usage_id) REFERENCES TelnyxEndpointUsage (id)
+          ON DELETE RESTRICT,
+        CONSTRAINT FOREIGN KEY (message_id) REFERENCES TelnyxMessage (id)
+          ON DELETE RESTRICT,
+        CONSTRAINT FOREIGN KEY (endpoint_id) REFERENCES TelnyxEndpoint (id)
+          ON DELETE RESTRICT,
+        CONSTRAINT unique_endpoint UNIQUE (usage_id, message_id, endpoint_id));",
+    "CREATE TABLE IF NOT EXISTS TelnyxMessageError (
+        id INTEGER AUTO_INCREMENT PRIMARY KEY,
+        message_id INTEGER,
+        error_text TEXT,
+        INDEX (message_id),
+        CONSTRAINT FOREIGN KEY (message_id) REFERENCES TelnyxMessage (id)
+          ON DELETE RESTRICT);"
 );
 
-$process = proc_open($cmd, $descriptorspec, $pipes);
+foreach ($CreateTables as $tabledef) {
+  $count = $pdo->exec($tabledef);
 
-if (is_resource($process)) {
-
-  //row2xfdf is made-up function that turns HTML-form data to XFDF
-  fwrite($pipes[0], $createdb);
-  fclose($pipes[0]);
-
-  $pdf_content = stream_get_contents($pipes[1]);
-  fclose($pipes[1]);
-
-  $return_value = proc_close($process);
-
-  echo $pdf_content;
-
-  $descriptorspec = array(
-      0 => array('file', 'telnyx_messages.sql', 'r'),
-      1 => array('pipe', "w"),
-      2 => array("file", "/tmp/mysql.err", "a")
-  );
-
-  $cmd = "mysql $db_name";
-
-  $process = proc_open($cmd, $descriptorspec, $pipes);
-
-  if (is_resource($process)) {
-
-    //row2xfdf is made-up function that turns HTML-form data to XFDF
-    $pdf_content = stream_get_contents($pipes[1]);
-    fclose($pipes[1]);
-
-    $return_value = proc_close($process);
-    echo $pdf_content;
-
-    $pmsg = new TelnyxMessage();
-
-    $pmsg->init_lookup_tables($pmsg);
+  if ($count === false) {
+    out("Unable to create table, definition = $tabledef, code = ".$pdo->errorCode()."(".$pdo->errorInfo().")", true);
+    return 1;
   }
 }
+
+$pmsg = new TelnyxMessage();
+
+$pmsg->init_lookup_table();

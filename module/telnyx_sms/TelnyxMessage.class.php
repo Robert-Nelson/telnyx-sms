@@ -6,7 +6,8 @@ $restrict_mods = array();
 
 include '/etc/freepbx.conf';
 
-global $amp_conf, $astman;
+global $amp_conf;
+global $astman;
 
 const APP_LOG_DIR = "/var/log/apache2/";
 
@@ -56,7 +57,7 @@ class TelnyxMessage
 
   protected function open_message_db(): PDO
   {
-    self::debug_message('Opening '.$this->message_db_file);
+    self::debug_message('Opening Message database');
 
 // Retrieve database and table name if defined, otherwise use FreePBX default
     $db_name = !empty($amp_conf['TSMSDBNAME'])?$amp_conf['TSMSDBNAME']:"telnyx_messages";
@@ -73,42 +74,39 @@ class TelnyxMessage
       $db_pass = empty($amp_conf["TSMSDBPASS"]) ? $amp_conf["AMPDBPASS"] : $amp_conf["TSMSDBPASS"];
       $datasource = $db_type . '://' . $db_user . ':' . $db_pass . '@' . $db_host . $db_port . '/' . $db_name;
       $dbtsms = DB::connect($datasource); // attempt connection
-      if(DB::isError($dbtsms)) {
+      if (DB::isError($dbtsms)) {
         die_freepbx($dbtsms->getDebugInfo());
       }
       $dbtsms = null;
     }
 
-    if (! function_exists("out")) {
-      function out($text) {
-        echo $text."<br />";
-      }
-    }
+//    if (! function_exists("out")) {
+//      function out($text) {
+//        echo $text."<br />";
+//      }
+//    }
 
     global $amp_conf;
 
     $dbt = !empty($dbt) ? $dbt : 'mysql';
     $db_type = $db_hash[$dbt];
-    $db_table_name = !empty($db_table) ? $db_table : "cdr";
     $db_name = !empty($db_name) ? $db_name : "telnyx_messages";
     $db_host = empty($db_host) ?  $amp_conf['AMPDBHOST'] : $db_host;
     $db_port = empty($db_port) ? '' :  ';port=' . $db_port;
     $db_user = empty($db_user) ? $amp_conf['AMPDBUSER'] : $db_user;
     $db_pass = empty($db_pass) ? $amp_conf['AMPDBPASS'] : $db_pass;
 
-    $pdo = new \Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name,$db_user,$db_pass);
-
-    return $pdo;
+    return new Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name,$db_user,$db_pass);
   }
 
   protected function close_message_db(PDO $db): void
   {
-    self::debug_message('Closing '.$this->message_db_file);
-    $db->close();
   }
 
-  public function init_lookup_tables(PDO $db):bool
+  public function init_lookup_table():bool
   {
+    $db = $this->open_message_db();
+
     $this->lookup_id($db, "TelnyxLineType", "Wireline");
     $this->lookup_id($db, "TelnyxLineType", "Wireless");
     $this->lookup_id($db, "TelnyxLineType", "VoWiFi");
@@ -121,6 +119,8 @@ class TelnyxMessage
     $this->lookup_id($db, "TelnyxEndpointUsage", "from");
     $this->lookup_id($db, "TelnyxEndpointUsage", "to");
     $this->lookup_id($db, "TelnyxEndpointUsage", "cc");
+
+    $this->close_message_db($db);
 
     return true;
   }
@@ -199,6 +199,7 @@ class TelnyxMessage
 
   protected function send_message(object $sms): void
   {
+    global $astman;
     if (!$astman->connected()) {
       $out = $astman->Command('sip show registry');
       echo $out['data'];
@@ -340,7 +341,6 @@ class TelnyxMessage
         $stmtInsert->bindValue(":body_text", $message->text);
 
         $stmtInsert->execute();
-        $stmtInsert->close();
       }
     } catch (Exception $e) {
       if (preg_match('/unique/i', $e->getMessage()) != 1) {
@@ -379,7 +379,6 @@ class TelnyxMessage
         }
 
         $stmtModify->execute();
-        $stmtModify->close();
       }
     }
 
@@ -445,12 +444,6 @@ class TelnyxMessage
             throw $e;
           }
 
-          try {
-            $stmtMapInsert->reset();
-          } catch (Exception $e) {
-            // Ignore exception on previous insert attempt
-          }
-
           if (property_exists($endpoint, "status") && $endpoint->status != null) {
             $stmtMapModify = $msgDB->prepare("
                 UPDATE TelnyxEndpointMap 
@@ -464,19 +457,15 @@ class TelnyxMessage
               $stmtMapModify->bindValue(":delivery_status", $endpoint->status);
 
               try {
-                $result = $stmtMapModify->execute();
+                $stmtMapModify->execute();
               } catch (Exception $e) {
                 self::log_message("PDO Exception " . $e->getCode() . ": " . $e->getMessage() . " (" . $e->getFile() . ":" . $e->getLine() . ")",
                     "Message ID: $message_id, Usage: $usage, Endpoint ID: $endpoint_id");
               }
-              $stmtMapModify->close();
             }
           }
         }
-
-        $stmtMapInsert->reset();
       }
-      $stmtMapInsert->close();
     }
     return $success;
   }
@@ -513,11 +502,10 @@ class TelnyxMessage
 
       $result = $stmtQuery->execute();
       if ($result !== false) {
-        while (($row = $result->fetch(PDO::FETCH_ASSOC)) !== false) {
+      while (($row = $stmtQuery->fetch(PDO::FETCH_ASSOC)) !== false) {
           $result_rows[] = $row;
         }
       }
-      $stmtQuery->close();
 
       $headings = $headings && $skip == 0;
       $skip += count($result_rows);
@@ -550,11 +538,10 @@ class TelnyxMessage
 
       $result = $stmtQuery->execute();
       if ($result !== false) {
-        if (($row = $result->fetch(PDO::FETCH_NUM)) !== false) {
+        if (($row = $stmtQuery->fetch(PDO::FETCH_NUM)) !== false) {
           $body_text = $row[0];
         }
       }
-      $stmtQuery->close();
     }
 
     $this->close_message_db($msgDB);
@@ -594,12 +581,12 @@ class TelnyxMessage
   {
     $id = null;
 
-    $stmtQuery = $msgDB->prepare("SELECT id FROM $table WHERE value = :value COLLATE NOCASE;");
+    $stmtQuery = $msgDB->prepare("SELECT id FROM $table WHERE value = :value;");
     if ($stmtQuery !== false) {
       $stmtQuery->bindValue(":value", $value);
       $result = $stmtQuery->execute();
       if ($result !== false) {
-        $row = $result->fetch(PDO::FETCH_NUM);
+        $row = $stmtQuery->fetch(PDO::FETCH_NUM);
 
         if ($row === false) {
           $stmtInsert = $msgDB->prepare("INSERT INTO $table ( value ) VALUES (:value);");
@@ -608,15 +595,13 @@ class TelnyxMessage
             $result = $stmtInsert->execute();
 
             if ($result !== false) {
-              $id = $msgDB->lastInsertRowID();
+              $id = $msgDB->lastInsertID();
             }
-            $stmtInsert->close();
           }
         } else {
           $id = $row[0];
         }
       }
-      $stmtQuery->close();
     }
     return $id;
   }
@@ -625,7 +610,11 @@ class TelnyxMessage
   {
     $querySql = "SELECT value FROM $table WHERE id = $id;";
 
-    return $msgDB->querySingle($querySql);
+    $stmtQuery = $msgDB->query($querySql,PDO::FETCH_NUM);
+
+    $row = $stmtQuery->fetch(PDO::FETCH_NUM);
+
+    return $row[0];
   }
 
   /** @noinspection DuplicatedCode */
@@ -637,13 +626,12 @@ class TelnyxMessage
     $stmtQuery->bindValue(":message_id", $telnyx_message_id);
     $result = $stmtQuery->execute();
     if ($result) {
-      $row = $result->fetch(PDO::FETCH_NUM);
+      $row = $stmtQuery->fetch(PDO::FETCH_NUM);
 
       if ($row !== false) {
         $id = $row[0];
       }
     }
-    $stmtQuery->close();
     return $id;
   }
 
@@ -656,7 +644,7 @@ class TelnyxMessage
       $stmtQuery->bindValue(":phone_number", $phone_number);
       $result = $stmtQuery->execute();
       if ($result !== false) {
-        $row = $result->fetch(PDO::FETCH_NUM);
+        $row = $stmtQuery->fetch(PDO::FETCH_NUM);
 
         if ($row === false) {
           $stmtInsert = $msgDB->prepare("INSERT INTO TelnyxEndpoint ( phone_number, carrier_id, line_type_id ) VALUES (:phone_number, :carrier_id, :line_type_id);");
@@ -667,15 +655,13 @@ class TelnyxMessage
             $result = $stmtInsert->execute();
 
             if ($result !== false) {
-              $id = $msgDB->lastInsertRowID();
+              $id = $msgDB->lastInsertID();
             }
-            $stmtInsert->close();
           }
         } else {
           $id = $row[0];
         }
       }
-      $stmtQuery->close();
     }
     return $id;
   }
