@@ -8,6 +8,7 @@ if (!defined('FREEPBX_IS_AUTH')) { die('No direct script access allowed'); }
 //
 require_once(__DIR__ . '/TelnyxMessage.class.php');
 require_once(__DIR__ . '/functions.inc.php');
+
 global $amp_conf;
 
 // Retrieve database and table name if defined, otherwise use FreePBX default
@@ -47,55 +48,43 @@ $db_port = empty($db_port) ? '' :  ';port=' . $db_port;
 $db_user = empty($db_user) ? $amp_conf['AMPDBUSER'] : $db_user;
 $db_pass = empty($db_pass) ? $amp_conf['AMPDBPASS'] : $db_pass;
 
-$id_out = shell_exec("/usr/bin/id");
-dbug("id", $id_out, 1);
+function exec_stdio($cmd, $stdin, &$stdout, &$stderr): int {
+  $return = false;
 
-$grantAll = "GRANT ALL ON $db_name.* TO $db_user@lcalhost;";
-
-$flush = "FLUSH PRIVILEGES;";
-
-$desc_specs = array(
+  $desc_specs = array(
     0 => array("pipe", "r"),
     1 => array("pipe", "w"),
     2 => array("pipe", "w"),
-);
+  );
 
-$pipes = array();
+  $pipes = array();
 
-$process = proc_open("/usr/bin/mysql", $desc_specs, $pipes);
+  $process = proc_open($cmd, $desc_specs, $pipes);
 
-if (is_resource($process)) {
-  fwrite($pipes[0], $grantAll);
-  fwrite($pipes[0], $flush);
-  fclose($pipes[0]);
+  if (is_resource($process)) {
+    if (is_array($stdin)) {
+      foreach ($stdin as $line) {
+        fwrite($pipes[0], $line);
+      }
+    } else {
+      fwrite($pipes[0], $stdin);
+    }
+    fclose($pipes[0]);
+
+    $stdout = stream_get_contents($pipes[1]);
+    fclose($pipes[1]);
+
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[2]);
+
+    $return = proc_close($process);
+  }
+
+  return $return;
 }
 
-$output = stream_get_contents($pipes[1]);
-fclose($pipes[1]);
-
-$errs = stream_get_contents($pipes[2]);
-fclose($pipes[2]);
-
-$return = proc_close($process);
-
-dbug("Privileges - result", $return, 1);
-dbug("Privileges - stdout", $output, 1);
-dbug("Privileges - stderr", $errs, 1);
 
 //$pdo = new Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name,$db_user,$db_pass);
-$pdo = new Database($db_type.':host='.$db_host.$db_port);
-
-$createdb = "
-CREATE DATABASE IF NOT EXISTS $db_name
- CHARACTER SET = 'utf8mb4'
- COLLATE = 'utf8mb4_general_ci';";
-
-$count = $pdo->exec($createdb);
-
-if ($count === false) {
-  out("Unable to create $db_name, code = ".$pdo->errorCode()."(".$pdo->errorInfo().")");
-  return 1;
-}
 
 $pdo = new Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name);
 
@@ -180,3 +169,7 @@ foreach ($CreateTables as $tabledef) {
 $pmsg = new TelnyxMessage();
 
 $pmsg->init_lookup_table();
+
+symlink("/etc/logrotate.d/freepbx-telnyx-sms", __DIR__."freepbx-telnyx-sms.logrotate");
+symlink("/var/www/html", __DIR__."telnyx-send.php");
+symlink("/var/www/html", __DIR__."telnyx-webhook.php");

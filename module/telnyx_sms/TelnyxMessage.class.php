@@ -18,10 +18,6 @@ class TelnyxMessage
 
   protected const TelnyxToken = '***** Telnyx Secret API Token *****';
 
-  protected const AMI_host = 'tcp://127.0.0.1:5038';
-  protected const AsteriskManagerUser = 'telnyx-sms';
-  protected const AsteriskManagerSecret = 'J5LEd6zqMvliHdhM5HDPjSM6JAQcaA2G';
-
   protected const TelnyxUrl = 'https://api.telnyx.com/v2/messages';
   protected const TelnyxPublicKey = 'dyoI+5gwA41N0qDAH2SLqW2ro8xUsCT/UmzKrmDHZVQ=';	// Public key for verifying signature - download from Telnyx Mission Control Panel
 
