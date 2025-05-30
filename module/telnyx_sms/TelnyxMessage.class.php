@@ -16,8 +16,6 @@ class TelnyxMessage
   protected static bool $debug = true;
   protected static string $Logfile = APP_LOG_DIR.'telnyx-sms.log'; // all SMSes and errors will be logged here for debugging purposes
 
-  protected const TelnyxToken = '***** Telnyx Secret API Token *****';
-
   protected const TelnyxUrl = 'https://api.telnyx.com/v2/messages';
   protected const TelnyxPublicKey = 'dyoI+5gwA41N0qDAH2SLqW2ro8xUsCT/UmzKrmDHZVQ=';	// Public key for verifying signature - download from Telnyx Mission Control Panel
 
@@ -134,13 +132,16 @@ class TelnyxMessage
             "to"   => "+1" . $to,
             "text" => $body
         ));
+
+    $telnyxModule = Freepbx::Modules()->getModulesByMethod("getTelnyxToken");
+
     $http_opts = array('http' =>
         array(
             'method' => 'POST',
             'header' => array(
                 'Content-type: application/json',
                 'Accept: application/json',
-                'Authorization: Bearer '. self::TelnyxToken
+                'Authorization: Bearer '. $telnyxModule()->getTelnyxToken(),
             ),
             'timeout' => '3',
             'content' => $http_body

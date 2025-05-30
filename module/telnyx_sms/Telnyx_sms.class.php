@@ -24,6 +24,10 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     $this->doGeneralPost();
   }
 
+  public function getTelnyxToken() {
+    return $this->getConfig("telnyx-token");
+  }
+
   //This shows the submit buttons
   public function getActionBar($request) {
     $buttons = array();

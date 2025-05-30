@@ -49,7 +49,10 @@ $db_pass = empty($db_pass) ? $amp_conf['AMPDBPASS'] : $db_pass;
 
 // echo "db_type=$db_type, db_name=$db_name, db_host=$db_host, db_port=$db_port, db_user=$db_user, db_pass=$db_pass\n";
 
-$pdo = new Database($db_type.':host='.$db_host.$db_port, "root");
+try {
+  $pdo = new Database($db_type . ':host=' . $db_host . $db_port, "root");
+} catch (Exception $e) {
+}
 
 $createdb = "
 CREATE DATABASE IF NOT EXISTS $db_name
@@ -118,9 +121,19 @@ chown("/var/log/asterisk/telnyx-sms.log", "asterisk");
 chgrp("/var/log/asterisk/telnyx-sms.log", "asterisk");
 chmod("/var/log/asterisk/telnyx-sms.log", 0640);
 
+$symlinks = array(
+  array(__DIR__."/freepbx-telnyx-sms.logrotate", "/etc/logrotate.d/freepbx-telnyx-sms", "root", "root"),
+  array(__DIR__."/telnyx-send.php", "/var/www/html/telnyx-send.php", "asterisk", "asterisk"),
+  array(__DIR__."/telnyx-webhook.php", "/var/www/html/telnyx-webhook.php", "asterisk", "asterisk")
+);
 
-symlink("admin/modules/telnyx_sms/freepbx-telnyx-sms.logrotate", "/etc/logrotate.d/freepbx-telnyx-sms");
-symlink("admin/modules/telnyx-send.php", "/var/www/html");
-symlink("admin/modules/telnyx-webhook.php", "/var/www/html");
+foreach ($symlinks as $link) {
+  if (file_exists($link[1])) {
+    unlink($link[1]);
+  }
+  symlink($link[0], $link[1]);
+  lchown($link[1], $link[2]);
+  lchgrp($link[1], $link[3]);
+}
 
 exit(0);
