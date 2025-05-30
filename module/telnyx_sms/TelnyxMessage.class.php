@@ -9,12 +9,12 @@ include '/etc/freepbx.conf';
 global $amp_conf;
 global $astman;
 
-const APP_LOG_DIR = "/var/log/apache2/";
+const APP_LOG_DIR = "/var/log/asterisk/";
 
 class TelnyxMessage
 {
   protected static bool $debug = true;
-  protected static string $Logfile = APP_LOG_DIR.'sms.log'; // all SMSes and errors will be logged here for debugging purposes
+  protected static string $Logfile = APP_LOG_DIR.'telnyx-sms.log'; // all SMSes and errors will be logged here for debugging purposes
 
   protected const TelnyxToken = '***** Telnyx Secret API Token *****';
 

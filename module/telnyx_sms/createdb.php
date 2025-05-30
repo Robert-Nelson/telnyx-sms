@@ -106,11 +106,17 @@ if (is_object($stmt) && get_class($stmt) == "DB_Error") {
   exit(1);
 }
 
-$result = $stmt->execute($stmt);
+$result = $stmt->execute();
 
 if (is_object($result) && get_class($result) == "DB_Error") {
   echo "Error replacing freepbx_setting, code = ".$stmt->getCode().", message = ".$stmt->getMessage().", ([".implode("],[",$stmt->errorInfo())."])";
   exit(1);
 }
+
+touch("/usr/log/asterisk/telnyx-sms.log");
+chown("/usr/log/asterisk/telnyx-sms.log", "asterisk");
+chgrp("/usr/log/asterisk/telnyx-sms.log", "asterisk");
+chmod("/usr/log/asterisk/telnyx-sms.log", 0640);
+)
 
 exit(0);

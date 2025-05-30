@@ -1,0 +1,10 @@
+/var/log/asterisk/telnyx-sms.log{
+size 50M
+missingok
+rotate 7
+dateext
+notifempty
+sharedscripts
+create 0640 asterisk asterisk
+su asterisk asterisk
+}
