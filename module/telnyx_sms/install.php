@@ -169,7 +169,3 @@ foreach ($CreateTables as $tabledef) {
 $pmsg = new TelnyxMessage();
 
 $pmsg->init_lookup_table();
-
-symlink("/etc/logrotate.d/freepbx-telnyx-sms", __DIR__."freepbx-telnyx-sms.logrotate");
-symlink("/var/www/html", __DIR__."telnyx-send.php");
-symlink("/var/www/html", __DIR__."telnyx-webhook.php");

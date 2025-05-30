@@ -113,10 +113,14 @@ if (is_object($result) && get_class($result) == "DB_Error") {
   exit(1);
 }
 
-touch("/usr/log/asterisk/telnyx-sms.log");
-chown("/usr/log/asterisk/telnyx-sms.log", "asterisk");
-chgrp("/usr/log/asterisk/telnyx-sms.log", "asterisk");
-chmod("/usr/log/asterisk/telnyx-sms.log", 0640);
-)
+touch("/var/log/asterisk/telnyx-sms.log");
+chown("/var/log/asterisk/telnyx-sms.log", "asterisk");
+chgrp("/var/log/asterisk/telnyx-sms.log", "asterisk");
+chmod("/var/log/asterisk/telnyx-sms.log", 0640);
+
+
+symlink("admin/modules/telnyx_sms/freepbx-telnyx-sms.logrotate", "/etc/logrotate.d/freepbx-telnyx-sms");
+symlink("admin/modules/telnyx-send.php", "/var/www/html");
+symlink("admin/modules/telnyx-webhook.php", "/var/www/html");
 
 exit(0);
