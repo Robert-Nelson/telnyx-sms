@@ -133,7 +133,7 @@ class TelnyxMessage
             "text" => $body
         ));
 
-    $telnyxModule = Freepbx::Modules()->getModulesByMethod("getTelnyxToken");
+    $telnyxToken = Freepbx::Telnyx_sms()->getTelnyxToken();
 
     $http_opts = array('http' =>
         array(
@@ -141,7 +141,7 @@ class TelnyxMessage
             'header' => array(
                 'Content-type: application/json',
                 'Accept: application/json',
-                'Authorization: Bearer '. $telnyxModule()->getTelnyxToken(),
+                'Authorization: Bearer '. $telnyxToken,
             ),
             'timeout' => '3',
             'content' => $http_body
