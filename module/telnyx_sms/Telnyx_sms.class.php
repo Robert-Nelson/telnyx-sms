@@ -11,6 +11,14 @@ use BMO;
 use FreePBX_Helpers;
 
 class Telnyx_sms extends FreePBX_Helpers implements BMO {
+  protected $Freepbx;
+  protected $db;
+
+  public function __construct($freepbx){
+    $this->FreePBX = $freepbx;
+    $this->db = $freepbx->Database();
+  }
+
   //Install method. use this or install.php using both may cause weird behavior
   public function install() {}
   //Uninstall method. use this or install.php using both may cause weird behavior
@@ -59,7 +67,7 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     }
 
     if (isset($_POST['telnyx_token'])) {
-      $this->setConfig("telnyx-token", $newNumbers = $_POST['telnyx_token']);
+      $this->setConfig("telnyx-token", $_POST['telnyx_token']);
     }
 
     if (isset($_POST['add'])) {
@@ -94,10 +102,12 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
   }
 
   public function getDetails() {
+    dbug("getDetails");
     $sql = 'SELECT * FROM smsnumbers';
     $bindvalues = array();
     $sql .= ' ORDER BY phone';
 
+    dbug("sql", $sql);
     $sth = $this->db->prepare($sql);
     $sth->execute($bindvalues);
     dbug('execute', $sth, 1);
@@ -108,8 +118,8 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
   }
 
   public function ajaxRequest($req, &$setting) {
-    dbug('ajaxRequest', $req, 1);
-    dbug('ajaxRequest', $setting, 1);
+    dbug('ajaxRequest - req', $req, 1);
+    dbug('ajaxRequest - setting', $setting, 1);
     switch ($req) {
       case 'getJSON':
         return true;
@@ -124,8 +134,10 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     }
   }
   public function ajaxHandler(){
+    dbug("ajaxHandler - command", $_REQUEST['command']);
     switch ($_REQUEST['command']) {
       case 'getJSON':
+        dbug("ajaxHandler - jdata", $_REQUEST['jdata']);
         switch ($_REQUEST['jdata']) {
           case 'grid':
             $phones = $this->getDetails();

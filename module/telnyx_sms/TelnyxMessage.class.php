@@ -4,7 +4,7 @@ $bootstrap_settings['freepbx_auth'] = false;
 
 $restrict_mods = array();
 
-include '/etc/freepbx.conf';
+include_once '/etc/freepbx.conf';
 
 global $amp_conf;
 global $astman;
@@ -131,7 +131,8 @@ class TelnyxMessage
             "from" => "+1" . $from,
             "to"   => "+1" . $to,
             "text" => $body
-        ));
+        )
+    );
 
     $telnyxToken = Freepbx::Telnyx_sms()->getTelnyxToken();
 
@@ -141,13 +142,20 @@ class TelnyxMessage
             'header' => array(
                 'Content-type: application/json',
                 'Accept: application/json',
-                'Authorization: Bearer '. $telnyxToken,
+                'Authorization: Bearer '.$telnyxToken,
             ),
             'timeout' => '3',
             'content' => $http_body
-        ));
+        )
+    );
     $http_context = stream_context_create($http_opts);
-    return file_get_contents(self::TelnyxUrl, false, $http_context);
+    try {
+      $result = file_get_contents(self::TelnyxUrl, false, $http_context);
+    } catch (Exception $e) {
+      dbug("file_get_contents exception", $e, 1);
+      $result = "Error processing request";
+    }
+    return $result;
   }
 
   public static function webhook(string $body, string $signature, string $timestamp):string
