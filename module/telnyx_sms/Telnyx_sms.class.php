@@ -173,6 +173,7 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
   public function showPage()
   {
     $vars['telnyx_token'] = $this->getConfig('telnyx-token');
+    $vars['db'] = $this->db;
     return load_view(__DIR__ . '/views/grid.php', $vars);
   }
 }

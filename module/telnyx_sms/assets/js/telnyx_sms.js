@@ -1,3 +1,25 @@
+
+/*
+$(document).on('show.bs.tab', 'a[data-toggle="tab"]', function (e) {
+    var clicked = $(this).attr('href');
+    switch(clicked){
+        case '#smsnumbers':
+            $('#action-bar').removeClass('hidden');
+            $('#Submit').removeClass('hidden');
+            $('#Reset').removeClass('hidden');
+            break;
+        case '#smsextensions':
+            $('#action-bar').removeClass('hidden');
+            $('#Submit').addClass('hidden');
+            $('#Reset').addClass('hidden');
+            break;
+        default:
+            $('#action-bar').addClass('hidden');
+            break;
+    }
+});
+*/
+
 function phoneFormatter(value) {
     var html;
 

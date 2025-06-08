@@ -3,7 +3,7 @@
 <?php
 //include_once "/etc/freepbx.conf";
 
-global $db, $astman;
+global $astman;
 
 // Extensions
 $results = $astman->command("database query \"select DISTINCT substr(key, 10, 3) AS ext FROM astdb WHERE key LIKE '/AMPUSER/%'\"");
