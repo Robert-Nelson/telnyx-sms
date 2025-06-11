@@ -1,88 +1,27 @@
+const reNonDigits = /[^0-9]+/g;
 
-/*
-$(document).on('show.bs.tab', 'a[data-toggle="tab"]', function (e) {
+$(document).on('click', 'a[data-toggle="tab"]', function (e) {
     var clicked = $(this).attr('href');
-    switch(clicked){
+    switch (clicked) {
         case '#smsnumbers':
-            $('#action-bar').removeClass('hidden');
-            $('#Submit').removeClass('hidden');
-            $('#Reset').removeClass('hidden');
+            $('#smsextensions').removeClass('active');
+            $("li[data-name='smsextensions']").removeClass('active');
+            $("li[data-name='smsnumbers']").addClass('active');
+            $('#smsnumbers').addClass('active');
             break;
         case '#smsextensions':
-            $('#action-bar').removeClass('hidden');
-            $('#Submit').addClass('hidden');
-            $('#Reset').addClass('hidden');
-            break;
-        default:
-            $('#action-bar').addClass('hidden');
+            $('#smsnumbers').removeClass('active');
+            $("li[data-name='smsnumbers']").removeClass('active');
+            $("li[data-name='smsextensions']").addClass('active');
+            $('#smsextensions').addClass('active');
             break;
     }
 });
-*/
 
-function phoneFormatter(value) {
-    var html;
-
-    if (value !== '') {
-        html = '<span class="phonenumber">'+value+'</span>';
-    } else {
-        html = '<span class="phonenumber"><input id="newNumber"/></span>';
-    }
-    return html;
-
-}
-
-function actionFormatter(value) {
-    var html;
-
-    if (value[0] !== 0) {
-        html = '<a onclick="return deleteRow(this, '+value[0]+')"'+' class="delAction"><i class="fa fa-minus"></i></a>&nbsp;';
-    } else {
-        html = '<a id="addLink" onclick="return addRow(this);" class="addAction"><i class="fa fa-plus"></i></a>&nbsp;';
-    }
-    return html;
-}
-
-function addRow(anchorElement) {
-    var inputElement = document.getElementById("newNumber");
-    var newPhoneNUmber = inputElement.value;
-    inputElement.value = '';
-
-    var trElement = anchorElement.parentElement.parentElement;
-    var tbodyElement = trElement.parentElement;
-    var rowIndex = trElement.sectionRowIndex;
-
-    var spanElement = document.createElement("span");
-    spanElement.className = 'phonenumber newPhone';
-    spanElement.insertAdjacentText("AfterBegin", newPhoneNUmber);
-    var newtrElement = tbodyElement.insertRow(rowIndex);
-    var newphonetdElement = newtrElement.insertCell();
-    newphonetdElement.insertAdjacentElement("AfterBegin", spanElement);
-
-    var newAnchorElement = document.createElement("a");
-    newAnchorElement.setAttribute("onclick","return deleteRow(this, -1);");
-    newAnchorElement.className = "delAction";
-    var newIconElement = document.createElement("i");
-    newIconElement.className = "fa fa-minus";
-    newAnchorElement.insertAdjacentElement("AfterBegin", newIconElement);
-    var mewactiontdElement = newtrElement.insertCell();
-    mewactiontdElement.insertAdjacentElement("AfterBegin", newAnchorElement);
-}
-
-
-function deleteRow(anchorElement, id) {
-    var trElement = anchorElement.parentElement.parentElement;
-
-    if (id === -1) {
-        trElement.remove();
-    } else {
-        trElement.className = "deletedRow";
-        trElement.setAttribute("data-id", id);
-    }
-}
-
-function generateFormData(event) {
+function generateNumberFormData(event) {
     var formData = event.formData;
+
+    var allExtensionData = new Map();
 
     // Display the keys
     for (const key of formData.keys()) {
@@ -94,14 +33,48 @@ function generateFormData(event) {
     var deletedRows = document.getElementsByClassName("deletedRow");
 
     for (const row of deletedRows) {
-        formData.append("delete[]", row.getAttribute("data-id"));
+        formData.append("deleteNumbers[]", row.getAttribute("data-id"));
     }
 
     var addedNumbers = document.getElementsByClassName("newPhone");
 
     for (const phoneNumber of addedNumbers) {
-        formData.append("add[]", phoneNumber.innerText);
+        formData.append("addNumbers[]", phoneNumber.dataset.phone);
     }
+
+    formData.append("Submit", "Submit");
+}
+
+function generateExtensionFormData(event) {
+    var formData = event.formData;
+
+    var allExtensionData = new Map();
+
+    // Display the keys
+    for (const key of formData.keys()) {
+        formData.delete(key);
+    }
+
+    for (const extNumber of extens) {
+        var extensionData = new Map();
+
+        if (extcid.has(extNumber)) {
+            extensionData.set("sendCid", extcid.get(extNumber));
+        }
+
+        if (extnumbers.has(extNumber)) {
+            var phoneList = extnumbers.get(extNumber);
+            if (phoneList.length() > 0) {
+                extensionData.set("receiveNumbers", phoneList);
+            }
+        }
+
+        if (extensionData.size > 0) {
+            allExtensionData.set(extNumber, extensionData);
+        }
+    }
+
+    formData.append("extData", JSON.stringify(allExtensionData));
 
     formData.append("Submit", "Submit");
 }

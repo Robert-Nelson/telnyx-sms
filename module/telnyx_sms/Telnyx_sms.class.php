@@ -70,15 +70,15 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
       $this->setConfig("telnyx-token", $_POST['telnyx_token']);
     }
 
-    if (isset($_POST['add'])) {
-      $newNumbers = $_POST['add'];
+    if (isset($_POST['addNumbers'])) {
+      $newNumbers = $_POST['addNumbers'];
       foreach ($newNumbers as $number) {
         $this->addNumber($number);
       }
     }
 
-    if (isset($_POST['delete'])) {
-      $deletedIds = $_POST['delete'];
+    if (isset($_POST['deleteNumbers'])) {
+      $deletedIds = $_POST['deleteNumbers'];
       foreach ($deletedIds as $id) {
         $this->delNumber($id);
       }
