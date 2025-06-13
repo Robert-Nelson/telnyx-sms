@@ -31,11 +31,15 @@ if (!empty($amp_conf["TSMSDBHOST"]) && !empty($amp_conf["TSMSDBTYPE"])) {
   $db_user = empty($amp_conf["TSMSDBUSER"]) ? $amp_conf["AMPDBUSER"] : $amp_conf["TSMSDBUSER"];
   $db_pass = empty($amp_conf["TSMSDBPASS"]) ? $amp_conf["AMPDBPASS"] : $amp_conf["TSMSDBPASS"];
   $datasource = $db_type . '://' . $db_user . ':' . $db_pass . '@' . $db_host . $db_port . '/' . $db_name;
-  $dbtsms = DB::connect($datasource); // attempt connection
-  if (DB::isError($dbtsms)) {
-    die_freepbx($dbtsms->getDebugInfo());
+
+  try {
+    $dbtsms = DB::connect($datasource); // attempt connection
+    if (DB::isError($dbtsms)) {
+      die_freepbx($dbtsms->getDebugInfo());
+    }
+    $dbtsms = null;
+  } catch (Exception $e) {
   }
-  $dbtsms = null;
 }
 
 $db_hash = ['mysql' => 'mysql', 'postgres' => 'pgsql'];
@@ -105,7 +109,10 @@ REPLACE `freepbx_settings` VALUES
 $stmt = $db->prepare($TSMS_settings);
 
 if (is_object($stmt) && get_class($stmt) == "DB_Error") {
-  echo "Error preparing freepbx_setting, code = ".$stmt->getCode().", message = ".$stmt->getMessage().", ([".implode("],[",$stmt->errorInfo())."])";
+  try {
+    echo "Error preparing freepbx_setting, code = " . $stmt->getCode() . ", message = " . $stmt->getMessage() . ", ([" . implode("],[", $stmt->errorInfo()) . "])";
+  } catch (Exception $e) {
+  }
   exit(1);
 }
 

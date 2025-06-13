@@ -9,12 +9,14 @@ namespace FreePBX\modules;
 
 use BMO;
 use FreePBX_Helpers;
+use SimplePie\Exception;
 
 class Telnyx_sms extends FreePBX_Helpers implements BMO {
-  protected $Freepbx;
-  protected $db;
+  protected object $FreePBX;
+  protected object $db;
 
   public function __construct($freepbx){
+    parent::__construct($freepbx);
     $this->FreePBX = $freepbx;
     $this->db = $freepbx->Database();
   }
@@ -32,33 +34,36 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     $this->doGeneralPost();
   }
 
-  public function getTelnyxToken() {
-    return $this->getConfig("telnyx-token");
+  public function getTelnyxToken():string {
+    try {
+      return $this->getConfig("telnyx-token");
+    } catch (\Exception $e) {
+
+    }
+    return "";
   }
 
   //This shows the submit buttons
-  public function getActionBar($request) {
+  public function getActionBar($request):array {
     $buttons = array();
-    switch($_GET['display']) {
-      case 'telnyx_sms':
-        $buttons = array(
-          'reset' => array(
-            'name' => 'reset',
-            'id' => 'reset',
-            'value' => _('Reset')
-          ),
-          'submit' => array(
-            'name' => 'submit',
-            'id' => 'submit',
-            'value' => _('Submit')
-          )
-        );
-      break;
+    if ($_GET['display'] == 'telnyx_sms') {
+      $buttons = array(
+        'reset' => array(
+          'name' => 'reset',
+          'id' => 'reset',
+          'value' => _('Reset')
+        ),
+        'submit' => array(
+          'name' => 'submit',
+          'id' => 'submit',
+          'value' => _('Submit')
+        )
+      );
     }
     return $buttons;
   }
 
-  public function doGeneralPost()
+  public function doGeneralPost():void
   {
     dbug("doGeneralPost", $_POST, 1);
 
@@ -66,26 +71,90 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
       return;
     }
 
-    if (isset($_POST['telnyx_token'])) {
-      $this->setConfig("telnyx-token", $_POST['telnyx_token']);
-    }
+    if (isset($_REQUEST['action'])) {
+      if ($_REQUEST['action'] == 'smsnum') {
+        if (isset($_POST['telnyx_token'])) {
+          try {
+            $this->setConfig("telnyx-token", $_POST['telnyx_token']);
+          } catch (\Exception $e) {
+          }
+        }
 
-    if (isset($_POST['addNumbers'])) {
-      $newNumbers = $_POST['addNumbers'];
-      foreach ($newNumbers as $number) {
-        $this->addNumber($number);
+        if (isset($_POST['addNumbers'])) {
+          $newNumbers = $_POST['addNumbers'];
+          foreach ($newNumbers as $number) {
+            $this->addNumber($number);
+          }
+        }
+
+        if (isset($_POST['deleteNumbers'])) {
+          $deletedIds = $_POST['deleteNumbers'];
+          foreach ($deletedIds as $id) {
+            $this->delNumber($id);
+          }
+        }
       }
-    }
-
-    if (isset($_POST['deleteNumbers'])) {
-      $deletedIds = $_POST['deleteNumbers'];
-      foreach ($deletedIds as $id) {
-        $this->delNumber($id);
+    } else if ($_REQUEST['action'] == 'smsext') {
+      if (isset($_POST['extcid'])) {
+        $this->writeCID($_POST['extdata']);
+      }
+      if (isset($_POST['extnumbers'])) {
+        $this->writeExtNumbers($_POST['extnumbers']);
       }
     }
   }
 
-  public function addNumber($number) {
+  public function writeCID($extCID) {
+    $extens = array_keys($extCID);
+    $extenList = implode(",", $extens);
+    $sql = "DELETE FROM smscid WHERE Exten NOT IN ($extenList);";
+    $stmt = $this->db.prepare($sql);
+//    $result = $stmt->execute();
+    dbug($sql);
+    $sql = 'REPLACE INTO smscid (Exten, Phone_ID) VALUES ';
+    foreach ($extens as $ext) {
+      $sql .= "($ext, $extCID[$ext]), ";
+    }
+    $this->db->prepare($sql);
+//    return $stmt->execute();
+    dbug($sql);
+  }
+
+  public function writeExtNumbers($extnumbers) {
+    $extens = array_keys($extnumbers);
+    $sql = "DELETE FROM smsextens";
+    if (count($extens) > 0) {
+      $extenList = implode(",", $extens);
+      $sql = " WHERE (Exten NOT IN ($extenList)) OR ";
+      foreach ($extens as $ext) {
+        if (count($extnumbers[$ext]) > 0) {
+          $phoneList = implode(",", $extnumbers[$ext]);
+          $sql .= "(Extens = $ext AND Phone_id NOT IN ($phoneList)) OR ";
+        } else {
+          $sql .= "(Extens = $ext) OR ";
+        }
+      }
+      $sql = substr($sql, 0, -3);
+    }
+    $sql .= ";";
+    $stmt = $this->db.prepare($sql);
+//    $result = $stmt->execute();
+    dbug($sql);
+
+    $sql = 'REPLACE INTO smsextens (Exten, Phone_ID) VALUES ';
+    foreach ($extens as $ext) {
+      foreach ($extnumbers[$ext] as $phoneID) {
+        $sql .= "($ext, $phoneID), ";
+      }
+    }
+    $sql = substr($sql, 0,-2);
+    $sql .= ";";
+    $stmt = $this->db->prepare($sql);
+//    return $stmt->execute();
+    dbug($sql);
+  }
+
+  public function addNumber($number):bool {
     $sql = 'INSERT INTO `smsnumbers` (Phone) Values (?)';
     $bindvalues = array($number);
 
@@ -93,7 +162,7 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     return $sth->execute($bindvalues);
   }
 
-  public function delNumber($id) {
+  public function delNumber($id):bool {
     $sql = 'DELETE FROM`smsnumbers` WHERE ID = ?';
     $bindvalues = array($id);
 
@@ -101,79 +170,71 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     return $sth->execute($bindvalues);
   }
 
-  public function getDetails() {
+  public function getDetails():array {
+    $res = null;
     dbug("getDetails");
     $sql = 'SELECT * FROM smsnumbers';
     $bindvalues = array();
     $sql .= ' ORDER BY phone';
-
     dbug("sql", $sql);
     $sth = $this->db->prepare($sql);
     $sth->execute($bindvalues);
     dbug('execute', $sth, 1);
     $res = $sth->fetchAll();
     dbug('fetchall', $res, 1);
-    $res = is_array($res)?$res:array();
-    return $res;
+    return is_array($res) ? $res : array();
   }
 
-  public function ajaxRequest($req, &$setting) {
+  public function ajaxRequest($req, $setting):bool {
     dbug('ajaxRequest - req', $req, 1);
     dbug('ajaxRequest - setting', $setting, 1);
-    switch ($req) {
-      case 'getJSON':
-        return true;
-        break;
-      case 'addNumber':
-      case 'delNumber':
-        return true;
-        break;
-      default:
-        return false;
-        break;
-    }
+    return match ($req) {
+      'getJSON', 'addNumber', 'delNumber' => true,
+      default => false
+    };
   }
-  public function ajaxHandler(){
+  public function ajaxHandler(): bool|array {
     dbug("ajaxHandler - command", $_REQUEST['command']);
-    switch ($_REQUEST['command']) {
-      case 'getJSON':
-        dbug("ajaxHandler - jdata", $_REQUEST['jdata']);
-        switch ($_REQUEST['jdata']) {
-          case 'grid':
-            $phones = $this->getDetails();
-            $ret = array();
-            foreach ($phones as $r) {
-              $ret[] = array(
-                  'phone' => $r['Phone'],
-                  'id' => $r['ID'],
-                  'link' => array($r['ID'], $r['Phone'])
-              );
-            }
-            $ret[] = array(
-              'phone' => '',
-              'id' => 0,
-              'link' => array(0, '')
-            );
-            dbug('ret', $ret, 1);
-            return $ret;
-       }
-       break;
-
-      default:
-        return false;
-        break;
+    if ($_REQUEST['command'] === 'getJSON') {
+      dbug("ajaxHandler - jdata", $_REQUEST['jdata']);
+      if ($_REQUEST['jdata'] == 'grid') {
+        $phones = $this->getDetails();
+        $ret = array();
+        foreach ($phones as $r) {
+          $ret[] = array(
+              'phone' => $r['Phone'],
+              'id' => $r['ID'],
+              'link' => array($r['ID'], $r['Phone'])
+          );
+        }
+        $ret[] = array(
+          'phone' => '',
+          'id' => 0,
+          'link' => array(0, '')
+        );
+        dbug('ret', $ret, 1);
+        return $ret;
+      }
     }
+    return false;
   }
 
-  public function getRightNav($request) {
+/*
+    public function getRightNav($request):string {
     $html = 'your custom html';
     return $html;
   }
+*/
 
-  public function showPage()
+  public function showPage(): false|string
   {
-    $vars['telnyx_token'] = $this->getConfig('telnyx-token');
+    $vars = array();
+    try {
+      $vars['telnyx_token'] = $this->getConfig('telnyx-token');
+    } catch (\Exception $e) {
+
+    }
     $vars['db'] = $this->db;
-    return load_view(__DIR__ . '/views/grid.php', $vars);
+    return load_view(__DIR__.'/views/grid.php', $vars);
   }
 }

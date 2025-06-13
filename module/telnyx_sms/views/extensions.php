@@ -14,7 +14,7 @@ global $astman;
 // Extensions
 $results = $astman->command("database query \"select DISTINCT substr(key, 10, 3) AS ext FROM astdb WHERE key LIKE '/AMPUSER/%'\"");
 $results = explode("\n",preg_replace("/(\n+)/","\n",$results["data"]));
-$extens = array_values(preg_filter('/ext.*[^0-9]([0-9]+)/', '$1', $results));
+$extens = array_values(preg_filter('/ext.*\D(\d+)/', '$1', $results));
 
 // Numbers
 $stmt = $db->prepare("select * from smsnumbers;");
@@ -71,48 +71,47 @@ function selectExtension(inputElement) {
 }
 
 function selectCID(inputElement) {
-	var ext = document.getElementById("extension").value;
+	let ext = document.getElementById("extension").value;
 
-  if (!(extcid instanceof Map)) {
-    extcid = new Map();
+  if (!(extcid instanceof Object)) {
+    extcid = new Object();
   }
 	if (inputElement.value !== "") {
-		extcid.set(ext, smsnumberkeys[inputElement.value]);
+		extcid[ext] = smsnumberkeys[inputElement.value];
 	} else {
 		if (ext in extcid) {
-			extcid.delete(ext);
+      delete(extcid[ext]);
 		}
 	}
 }
 
 function selectReceivedNumber(inputElement) {
-	var ext = document.getElementById("extension").value;
-	var phone = inputElement.dataset["phone"]
+	let ext = document.getElementById("extension").value;
+	let phone = inputElement.dataset["phone"]
 
 	if (inputElement.checked) {
-    if (!(extnumbers instanceof Map)) {
-      extnumbers = new Map();
+    if (!(extnumbers instanceof Object)) {
+      extnumbers = new Object();
     }
-    if (!extnumbers.has(ext)) {
-      extnumbers.set(ext, Array());
+    if (!(ext in extnumbers)) {
+      extnumbers[ext] = Array();
     }
 
-		extnumbers.get(ext).push(smsnumberkeys[phone]);
 	} else {
-		extnumbers.get(ext).delete(smsnumberkeys[phone]);
+    extnumbers[ext].push(smsnumberkeys[phone]);
+    extnumbers(ext).delete(smsnumberkeys[phone]);
 	}
 }
-</script>
 <?php
 $current_ext = $extens[0];
 ?>
 <form class='fpbx-submit' name="frm_telnyx_sms_ext" id="frm_telnyx_sms_ext" method="POST" novalidate="true" action="config.php?display=telnyx_sms&action=smsext">
-  <center><h1>Extension SMS Settings</h1></center>
+  <center><h1 style="">Extension SMS Settings</h1></center>
 
-  <table align="center">
-    <tbody?
+  <table style="text-align: center">
+    <tbody>
       <tr>
-        <td align="left">
+        <td style="text-align: left">
           <br/>
           <h2>Show settings for</h2>
           <label>Extension
@@ -131,7 +130,7 @@ $current_ext = $extens[0];
         </td>
       </tr>
       <tr>
-        <td align="left">
+        <td style="text-align: left">
           <br/>
           <h2>Sent Caller ID</h2>
           <label>SMS Number
@@ -159,7 +158,7 @@ $current_ext = $extens[0];
         </td>
       </tr>
       <tr>
-        <td align="left">
+        <td style="text-align: left">
           <br/>
           <h2>Receive Messages sent to</h2>
   <?php

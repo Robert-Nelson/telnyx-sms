@@ -6,9 +6,9 @@ if (!defined('FREEPBX_IS_AUTH')) { die('No direct script access allowed'); }
 //  Portions Copyright (C) 2011 Mikael Carlsson
 //	Copyright 2013 Schmooze Com Inc.
 //
-function telnyx_sms_get_config($engine)
+function telnyx_sms_get_config($engine): void
 {
-  global $core_conf, $amp_conf, $version, $astdb;
+  global $core_conf, $amp_conf, $version;
   if (isset($core_conf) && is_a($core_conf, "core_conf")) {
     $section = 'telnyxsmsdb';
     $core_conf->addResOdbc($section, ['enabled' => 'yes']);

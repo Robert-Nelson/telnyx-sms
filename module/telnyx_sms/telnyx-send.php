@@ -7,7 +7,7 @@ if (str_starts_with($_SERVER['REMOTE_ADDR'], '127.') || $_SERVER['REMOTE_ADDR'] 
   $to = $_GET["to"];
   $body = file_get_contents("php://input");
 
-  echo TelnyxMessage::send($from, $to, $body);
+  echo "TelnyxMessage::send($from, $to, $body)";
 } else {
   http_response_code(403);
 }

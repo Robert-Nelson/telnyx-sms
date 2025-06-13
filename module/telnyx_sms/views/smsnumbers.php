@@ -7,11 +7,11 @@
   });
 
   function phoneFormatter(value) {
-    var html;
+    let html;
 
     if (value !== '') {
-      bareNumber = value.replaceAll(reNonDigits,"");
-      formattedNumber = bareNumber.substr(0, 3) + "-" + bareNumber.substr(3, 3) + "-" + bareNumber.substr(6, 4);
+      let bareNumber = value.replaceAll(reNonDigits,"");
+      let formattedNumber = bareNumber.substr(0, 3) + "-" + bareNumber.substr(3, 3) + "-" + bareNumber.substr(6, 4);
       html = '<span class="phonenumber" data-phone="'+bareNumber+'">'+formattedNumber+'</span>';
     } else {
       html = '<span class="phonenumber"><input id="newNumber"/></span>';
@@ -20,7 +20,7 @@
   }
 
   function actionFormatter(value) {
-    var html;
+    let html;
 
     if (value[0] !== 0) {
       html = '<a onclick="return deleteRow(this, '+value[0]+')"'+' class="delAction"><i class="fa fa-minus"></i></a>&nbsp;';
@@ -31,36 +31,35 @@
   }
 
   function addRow(anchorElement) {
-    var inputElement = document.getElementById("newNumber");
-    var newPhoneNumber = inputElement.value.replaceAll(reNonDigits,"");
-    var formattedNumber = newPhoneNumber.substr(0, 3) + "-" + newPhoneNumber.substr(3, 3) + "-" + newPhoneNumber.substr(6, 4);
+    let inputElement = document.getElementById("newNumber");
+    let newPhoneNumber = inputElement.value.replaceAll(reNonDigits,"");
+    let formattedNumber = newPhoneNumber.substr(0, 3) + "-" + newPhoneNumber.substr(3, 3) + "-" + newPhoneNumber.substr(6, 4);
 
     inputElement.value = '';
 
-    var trElement = anchorElement.parentElement.parentElement;
-    var tbodyElement = trElement.parentElement;
-    var rowIndex = trElement.sectionRowIndex;
-
-    var spanElement = document.createElement("span");
+    let trElement = anchorElement.parentElement.parentElement;
+    let tbodyElement = trElement.parentElement;
+    let rowIndex = trElement.sectionRowIndex;
+    let spanElement = document.createElement("span");
     spanElement.className = 'phonenumber newPhone';
     spanElement.dataset.phone = newPhoneNumber;
     spanElement.insertAdjacentText("AfterBegin", formattedNumber);
-    var newtrElement = tbodyElement.insertRow(rowIndex);
-    var newphonetdElement = newtrElement.insertCell();
+    let newtrElement = tbodyElement.insertRow(rowIndex);
+    let newphonetdElement = newtrElement.insertCell();
     newphonetdElement.insertAdjacentElement("AfterBegin", spanElement);
 
-    var newAnchorElement = document.createElement("a");
+    let newAnchorElement = document.createElement("a");
     newAnchorElement.setAttribute("onclick","return deleteRow(this, -1);");
     newAnchorElement.className = "delAction";
-    var newIconElement = document.createElement("i");
+    let newIconElement = document.createElement("i");
     newIconElement.className = "fa fa-minus";
     newAnchorElement.insertAdjacentElement("AfterBegin", newIconElement);
-    var mewactiontdElement = newtrElement.insertCell();
+    let mewactiontdElement = newtrElement.insertCell();
     mewactiontdElement.insertAdjacentElement("AfterBegin", newAnchorElement);
   }
 
   function deleteRow(anchorElement, id) {
-    var trElement = anchorElement.parentElement.parentElement;
+    let trElement = anchorElement.parentElement.parentElement;
 
     if (id === -1) {
       trElement.remove();
@@ -71,7 +70,7 @@
   }
 </script>
 
-<form class='fpbx-submit' name="frm_telnyx_sms_num" id="frm_telnyx_sms_num" method="POST" novalidate="true" action="config.php?display=telnyx_sms&action=smsnum">
+<form class='fpbx-submit' name="frm_telnyx_sms_num" id="frm_telnyx_sms_num" method="POST" novalidate action="config.php?display=telnyx_sms&action=smsnum">
   <table id="tsmsgrid"
          data-url="ajax.php?module=telnyx_sms&amp;command=getJSON&amp;jdata=grid"
          data-cache="false"
@@ -79,7 +78,6 @@
          data-search="true"
          data-pagination="true"
          class="table table-striped">
-    <thead>
     <!--Telnyx Token-->
     <div class="element-container">
       <div class="row">
@@ -110,13 +108,13 @@
     </div>
     <!--END Telnyx Token-->
     <tr>
-      <th data-field="phone" data-formatter="phoneFormatter">
-        <?php echo _("Phone Number") ?>
-      </th>
-      <th class="col-md-2" data-field="link" data-formatter="actionFormatter">
-        <?php echo _("Actions") ?>
-      </th>
-    </tr>
+      <thead>
+        <th data-field="phone" data-formatter="phoneFormatter">
+          <?php echo _("Phone Number") ?>
+        </th>
+        <th class="col-md-2" data-field="link" data-formatter="actionFormatter">
+          <?php echo _("Actions") ?>
+        </th>
     </thead>
   </table>
 </form>

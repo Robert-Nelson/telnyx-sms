@@ -49,7 +49,7 @@ class TelnyxMessage
     }
   }
 
-  protected function open_message_db(): PDO
+  protected function open_message_db(): false|PDO
   {
     self::debug_message('Opening Message database');
 
@@ -67,9 +67,13 @@ class TelnyxMessage
       $db_user = empty($amp_conf["TSMSDBUSER"]) ? $amp_conf["AMPDBUSER"] : $amp_conf["TSMSDBUSER"];
       $db_pass = empty($amp_conf["TSMSDBPASS"]) ? $amp_conf["AMPDBPASS"] : $amp_conf["TSMSDBPASS"];
       $datasource = $db_type . '://' . $db_user . ':' . $db_pass . '@' . $db_host . $db_port . '/' . $db_name;
-      $dbtsms = DB::connect($datasource); // attempt connection
-      if (DB::isError($dbtsms)) {
-        die_freepbx($dbtsms->getDebugInfo());
+      try {
+        $dbtsms = DB::connect($datasource); // attempt connection
+        if (DB::isError($dbtsms)) {
+          die_freepbx($dbtsms->getDebugInfo());
+        }
+      } catch (Exception $e) {
+
       }
       $dbtsms = null;
     }
@@ -90,7 +94,12 @@ class TelnyxMessage
     $db_user = empty($db_user) ? $amp_conf['AMPDBUSER'] : $db_user;
     $db_pass = empty($db_pass) ? $amp_conf['AMPDBPASS'] : $db_pass;
 
-    return new Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name,$db_user,$db_pass);
+    try {
+      return new Database($db_type . ':host=' . $db_host . $db_port . ';dbname=' . $db_name, $db_user, $db_pass);
+    } catch (Exception $e) {
+
+    }
+    return false;
   }
 
   protected function close_message_db(PDO $db): void
@@ -214,13 +223,13 @@ class TelnyxMessage
     }
 
     self::debug_message("Received a message ".$sms->id);
-    if (preg_match("/\+1([2-9]\d\d[2-9]\d{6})/", $sms->to[0]->phone_number, $matches)) {
+    if (preg_match("/\+1([2-9]\d{2}[2-9]\d{6})/", $sms->to[0]->phone_number, $matches)) {
       // Find the recipient in astdb
       $to = $matches[1];
 
       $output = $astman->Command('database showkey accountcode');
 
-      $count = preg_match_all("#AMPUSER/(\d+)/accountcode.*: ([0-9,]*)\s*$#m", $output['data'], $extensions, PREG_SET_ORDER);
+      $count = preg_match_all("#AMPUSER/(\d+)/accountcode.*: ([\d,]*)\s*$#m", $output['data'], $extensions, PREG_SET_ORDER);
 
       self::debug_message($count." extensions");
       if ($count) {

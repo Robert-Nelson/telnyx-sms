@@ -21,7 +21,7 @@ $(document).on('click', 'a[data-toggle="tab"]', function (e) {
 function generateNumberFormData(event) {
     var formData = event.formData;
 
-    var allExtensionData = new Map();
+    var allExtensionData = new Object();
 
     // Display the keys
     for (const key of formData.keys()) {
@@ -48,33 +48,12 @@ function generateNumberFormData(event) {
 function generateExtensionFormData(event) {
     var formData = event.formData;
 
-    var allExtensionData = new Map();
-
-    // Display the keys
     for (const key of formData.keys()) {
         formData.delete(key);
     }
 
-    for (const extNumber of extens) {
-        var extensionData = new Map();
-
-        if (extcid.has(extNumber)) {
-            extensionData.set("sendCid", extcid.get(extNumber));
-        }
-
-        if (extnumbers.has(extNumber)) {
-            var phoneList = extnumbers.get(extNumber);
-            if (phoneList.length() > 0) {
-                extensionData.set("receiveNumbers", phoneList);
-            }
-        }
-
-        if (extensionData.size > 0) {
-            allExtensionData.set(extNumber, extensionData);
-        }
-    }
-
-    formData.append("extData", JSON.stringify(allExtensionData));
+    formData.append("extcid", JSON.stringify(extcid));
+    formData.append("extnumbers", JSON.stringify(extnumbers));
 
     formData.append("Submit", "Submit");
 }
