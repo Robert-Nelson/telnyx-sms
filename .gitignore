@@ -1,0 +1,17 @@
+/dist/
+/freepbx/
+/.idea/
+/tests/
+/vendor/
+telnyx_sms-server/
+/libraries/
+/overrides/
+/composer.json
+**/views/page2.php
+*.swp
+*.db
+*.lock
+*-save
+*.bak
+*.csv
+*.tbz

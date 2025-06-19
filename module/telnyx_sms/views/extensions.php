@@ -1,7 +1,7 @@
 <script>
 
   window.addEventListener("load", (event) => {
-    let form = document.getElementById("frm_telnyx_sms_d t");
+    let form = document.getElementById("frm_telnyx_sms_ext");
     form.addEventListener("formdata", (event) => {
       return generateExtensionFormData(event);
     });
@@ -24,8 +24,8 @@ $smsnumbers = array();
 $smsnumberkeys = array();
 
 foreach ($numbers as $number) {
-	$smsnumbers[$number["ID"]] = $number["Phone"];
-	$smsnumberkeys[$number["Phone"]] = $number["ID"];
+  $smsnumbers[$number["ID"]] = $number["Phone"];
+  $smsnumberkeys[$number["Phone"]] = $number["ID"];
 }
 
 // Ext CID
@@ -34,7 +34,7 @@ $stmt->execute();
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $extcid = array();
 foreach ($rows as $row) {
-	$extcid[$row["Exten"]] = $row["Phone_ID"];
+  $extcid[$row["Exten"]] = $row["Phone_ID"];
 }
 
 // ExtNumbers
@@ -43,11 +43,11 @@ $stmt->execute();
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $extnumbers = array();
 foreach ($rows as $row) {
-	$ext = $row["Exten"];
-	if (!array_key_exists($ext, $extnumbers)) {
-		$extnumbers[$ext] = Array();
-	}
-	$extnumbers[$ext][] = $row["Phone_ID"];
+  $ext = $row["Exten"];
+  if (!array_key_exists($ext, $extnumbers)) {
+    $extnumbers[$ext] = Array();
+  }
+  $extnumbers[$ext][] = $row["Phone_ID"];
 }
 
 echo "var extens = ".json_encode($extens, JSON_PRETTY_PRINT).";\n";
@@ -63,45 +63,47 @@ function selectExtension(inputElement) {
   smscidElem.value = smsnumbers[extcid[ext]["Phone_ID"]];
 
   for (const phonekey in smsnumbers) {
-	  var phone = smsnumbers[phonekey];
-	  var elem = document.getElementById("check_"+phone);
+    var phone = smsnumbers[phonekey];
+    var elem = document.getElementById("check_"+phone);
 
-	  elem.checked = ext in extnumbers && phone in extnumbers[ext];
+    elem.checked = ext in extnumbers && phone in extnumbers[ext];
   }
 }
 
 function selectCID(inputElement) {
-	let ext = document.getElementById("extension").value;
+  let ext = document.getElementById("extension").value;
 
-  if (!(extcid instanceof Object)) {
-    extcid = new Object();
+  if (extcid instanceof Array) {
+    extcid = {};
   }
-	if (inputElement.value !== "") {
-		extcid[ext] = smsnumberkeys[inputElement.value];
-	} else {
-		if (ext in extcid) {
-      delete(extcid[ext]);
-		}
-	}
+  if (inputElement.value !== "") {
+    extcid[ext] = smsnumberkeys[inputElement.value];
+  } else {
+    if (ext in extcid) {
+      delete extcid[ext];
+    }
+  }
 }
 
 function selectReceivedNumber(inputElement) {
-	let ext = document.getElementById("extension").value;
-	let phone = inputElement.dataset["phone"]
+  let ext = document.getElementById("extension").value;
+  let phone = inputElement.dataset["phone"]
 
-	if (inputElement.checked) {
-    if (!(extnumbers instanceof Object)) {
-      extnumbers = new Object();
+  if (inputElement.checked) {
+    if (extnumbers instanceof Array) {
+      extnumbers = {};
     }
     if (!(ext in extnumbers)) {
       extnumbers[ext] = Array();
     }
 
-	} else {
     extnumbers[ext].push(smsnumberkeys[phone]);
-    extnumbers(ext).delete(smsnumberkeys[phone]);
-	}
+  } else {
+    index = extnumbers[ext].indexOf(smsnumberkeys[phone]);
+    extnumbers[ext].splice(index, 1);
+  }
 }
+</script>
 <?php
 $current_ext = $extens[0];
 ?>

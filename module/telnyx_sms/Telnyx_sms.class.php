@@ -68,6 +68,7 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     dbug("doGeneralPost", $_POST, 1);
 
     if (!isset($_REQUEST['Submit'])) {
+      dbug("Missing Submit");
       return;
     }
 
@@ -93,53 +94,64 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
             $this->delNumber($id);
           }
         }
-      }
-    } else if ($_REQUEST['action'] == 'smsext') {
-      if (isset($_POST['extcid'])) {
-        $this->writeCID($_POST['extdata']);
-      }
-      if (isset($_POST['extnumbers'])) {
-        $this->writeExtNumbers($_POST['extnumbers']);
+      } else if ($_REQUEST['action'] == 'smsext') {
+        if (isset($_POST['extcid'])) {
+          dbug("action = smsext - cid", $_POST['extcid'], 1);
+          $cid = json_decode($_POST['extcid']);
+          dbug("object_vars", get_object_vars($cid), 1);
+          $this->writeCID(get_object_vars($cid));
+        }
+        if (isset($_POST['extnumbers'])) {
+          dbug("action = smsext - numbers", $_POST['extnumbers'], 1);
+          $num = json_decode($_POST['extnumbers']);
+          $this->writeExtNumbers(get_object_vars($num));
+        }
       }
     }
   }
 
   public function writeCID($extCID) {
     $extens = array_keys($extCID);
-    $extenList = implode(",", $extens);
-    $sql = "DELETE FROM smscid WHERE Exten NOT IN ($extenList);";
-    $stmt = $this->db.prepare($sql);
-//    $result = $stmt->execute();
+    $place_holders = '?' . str_repeat(', ?', count($extens) - 1);
+    $sql = "DELETE FROM smscid WHERE Exten NOT IN ($place_holders);";
+    $stmt = $this->db->prepare($sql);
     dbug($sql);
+    $result = $stmt->execute($extens);
+    dbug("result", $result);
     $sql = 'REPLACE INTO smscid (Exten, Phone_ID) VALUES ';
     foreach ($extens as $ext) {
-      $sql .= "($ext, $extCID[$ext]), ";
+      $sql .= "(\"$ext\", $extCID[$ext]), ";
     }
+    $sql = substr($sql, 0, -2);
+    $sql .= ";";
     $this->db->prepare($sql);
-//    return $stmt->execute();
     dbug($sql);
+    $result = $stmt->execute();
+    dbug("result", $result);
+    return $result;
   }
 
   public function writeExtNumbers($extnumbers) {
     $extens = array_keys($extnumbers);
     $sql = "DELETE FROM smsextens";
     if (count($extens) > 0) {
-      $extenList = implode(",", $extens);
-      $sql = " WHERE (Exten NOT IN ($extenList)) OR ";
+      $place_holders = '?' . str_repeat(', ?', count($extens) - 1);
+      $sql .= " WHERE (Exten NOT IN ($place_holders)) OR ";
       foreach ($extens as $ext) {
         if (count($extnumbers[$ext]) > 0) {
           $phoneList = implode(",", $extnumbers[$ext]);
-          $sql .= "(Extens = $ext AND Phone_id NOT IN ($phoneList)) OR ";
+          $sql .= "(Exten = $ext AND Phone_id NOT IN ($phoneList)) OR ";
         } else {
-          $sql .= "(Extens = $ext) OR ";
+          $sql .= "(Exten = $ext) OR ";
         }
       }
       $sql = substr($sql, 0, -3);
     }
     $sql .= ";";
-    $stmt = $this->db.prepare($sql);
-//    $result = $stmt->execute();
+    $stmt = $this->db->prepare($sql);
     dbug($sql);
+    $result = $stmt->execute($extens);
+    dbug("result", $result);
 
     $sql = 'REPLACE INTO smsextens (Exten, Phone_ID) VALUES ';
     foreach ($extens as $ext) {
@@ -150,8 +162,10 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     $sql = substr($sql, 0,-2);
     $sql .= ";";
     $stmt = $this->db->prepare($sql);
-//    return $stmt->execute();
     dbug($sql);
+    $result = $stmt->execute();
+    dbug("result", $result);
+    return $result;
   }
 
   public function addNumber($number):bool {
