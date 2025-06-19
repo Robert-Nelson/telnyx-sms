@@ -8,6 +8,8 @@ telnyx_sms-server/
 /overrides/
 /composer.json
 **/views/page2.php
+module.sig
+/sign/
 *.swp
 *.db
 *.lock
