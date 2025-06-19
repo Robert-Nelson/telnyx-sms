@@ -14,7 +14,7 @@
   <database>
     <table name="smsnumbers">
       <field name="ID" type="integer" primarykey="true" autoincrement="true"/>
-      <field name="Phone" type="string" length=20/>
+      <field name="Phone" type="string" length="20"/>
       <key name="Phone" type="unique">
         <column name="Phone"/>
       </key>
@@ -22,7 +22,7 @@
     <table name="smsextens">
       <field name="ID" type="integer" primarykey="true" autoincrement="true"/>
       <field name="Phone_ID" type="integer"/>
-      <field name="Exten" type="string" length=10/>
+      <field name="Exten" type="string" length="10"/>
       <key name="UC_Phone_ID_Exten" type="unique">
         <column name="Phone_ID"/>
         <column name="Exten"/>
@@ -30,7 +30,7 @@
     </table>
     <table name="smscid">
       <field name="ID" type="integer" primarykey="true" autoincrement="true"/>
-      <field name="Exten" type="string" length=10/>
+      <field name="Exten" type="string" length="10"/>
       <field name="Phone_ID" type="integer"/>
       <key name="UC_Exten_Phone_ID" type="unique">
         <column name="Exten"/>
