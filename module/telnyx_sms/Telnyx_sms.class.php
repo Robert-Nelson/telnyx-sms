@@ -97,14 +97,14 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
       } else if ($_REQUEST['action'] == 'smsext') {
         if (isset($_POST['extcid'])) {
           dbug("action = smsext - cid", $_POST['extcid'], 1);
-          $cid = json_decode($_POST['extcid']);
-          dbug("object_vars", get_object_vars($cid), 1);
-          $this->writeCID(get_object_vars($cid));
+          $cid = json_decode($_POST['extcid'], true);
+          dbug("object_vars", $cid, 1);
+          $this->writeCID($cid);
         }
         if (isset($_POST['extnumbers'])) {
           dbug("action = smsext - numbers", $_POST['extnumbers'], 1);
-          $num = json_decode($_POST['extnumbers']);
-          $this->writeExtNumbers(get_object_vars($num));
+          $num = json_decode($_POST['extnumbers'], true);
+          $this->writeExtNumbers($num);
         }
       }
     }
@@ -112,6 +112,7 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
 
   public function writeCID($extCID) {
     $extens = array_keys($extCID);
+    $this->db->beginTransaction();
     $place_holders = '?' . str_repeat(', ?', count($extens) - 1);
     $sql = "DELETE FROM smscid WHERE Exten NOT IN ($place_holders);";
     $stmt = $this->db->prepare($sql);
@@ -128,11 +129,13 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     dbug($sql);
     $result = $stmt->execute();
     dbug("result", $result);
+    $this->db->commit();
     return $result;
   }
 
   public function writeExtNumbers($extnumbers) {
     $extens = array_keys($extnumbers);
+    $this->db->beginTransaction();
     $sql = "DELETE FROM smsextens";
     if (count($extens) > 0) {
       $place_holders = '?' . str_repeat(', ?', count($extens) - 1);
@@ -153,18 +156,21 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     $result = $stmt->execute($extens);
     dbug("result", $result);
 
-    $sql = 'REPLACE INTO smsextens (Exten, Phone_ID) VALUES ';
-    foreach ($extens as $ext) {
-      foreach ($extnumbers[$ext] as $phoneID) {
-        $sql .= "($ext, $phoneID), ";
+    if (count($extens) > 0) {
+      $sql = 'REPLACE INTO smsextens (Exten, Phone_ID) VALUES ';
+      foreach ($extens as $ext) {
+        foreach ($extnumbers[$ext] as $phoneID) {
+          $sql .= "($ext, $phoneID), ";
+        }
       }
+      $sql = substr($sql, 0, -2);
+      $sql .= ";";
+      $stmt = $this->db->prepare($sql);
+      dbug($sql);
+      $result = $stmt->execute();
+      dbug("result", $result);
     }
-    $sql = substr($sql, 0,-2);
-    $sql .= ";";
-    $stmt = $this->db->prepare($sql);
-    dbug($sql);
-    $result = $stmt->execute();
-    dbug("result", $result);
+    $this->db->commit();
     return $result;
   }
 
