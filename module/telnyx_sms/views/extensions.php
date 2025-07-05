@@ -101,6 +101,9 @@ function selectReceivedNumber(inputElement) {
   } else {
     index = extnumbers[ext].indexOf(smsnumberkeys[phone]);
     extnumbers[ext].splice(index, 1);
+    if (extnumbers[ext].length == 0) {
+      delete extnumbers[ext];
+    }
   }
 }
 </script>

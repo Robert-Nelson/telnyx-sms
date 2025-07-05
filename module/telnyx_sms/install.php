@@ -115,7 +115,7 @@ $CreateTables = array(
     "CREATE TABLE IF NOT EXISTS TelnyxMessage (
         id INTEGER AUTO_INCREMENT PRIMARY KEY,
         profile_id INTEGER NOT NULL,
-        message_id INTEGER NOT NULL UNIQUE,
+        message_id CHAR(36) NOT NULL UNIQUE,
         direction_id INTEGER NOT NULL,
         cost_amount REAL,
         cost_currency TEXT,

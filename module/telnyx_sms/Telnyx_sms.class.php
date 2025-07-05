@@ -125,7 +125,7 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     }
     $sql = substr($sql, 0, -2);
     $sql .= ";";
-    $this->db->prepare($sql);
+    $stmt = $this->db->prepare($sql);
     dbug($sql);
     $result = $stmt->execute();
     dbug("result", $result);
@@ -157,9 +157,13 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     dbug("result", $result);
 
     if (count($extens) > 0) {
-      $sql = 'REPLACE INTO smsextens (Exten, Phone_ID) VALUES ';
+      $sql = null;
       foreach ($extens as $ext) {
         foreach ($extnumbers[$ext] as $phoneID) {
+          if (is_null($sql)) {
+            $sql = 'REPLACE INTO smsextens (Exten, Phone_ID) VALUES ';
+          }
+
           $sql .= "($ext, $phoneID), ";
         }
       }
@@ -175,7 +179,7 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
   }
 
   public function addNumber($number):bool {
-    $sql = 'INSERT INTO `smsnumbers` (Phone) Values (?)';
+    $sql = 'REPLACE INTO `smsnumbers` (Phone) Values (?)';
     $bindvalues = array($number);
 
     $sth = $this->db->prepare($sql);

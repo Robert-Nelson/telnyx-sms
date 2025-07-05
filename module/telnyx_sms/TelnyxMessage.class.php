@@ -7,7 +7,6 @@ $restrict_mods = array();
 include_once '/etc/freepbx.conf';
 
 global $amp_conf;
-global $astman;
 
 const APP_LOG_DIR = "/var/log/asterisk/";
 
@@ -213,45 +212,39 @@ class TelnyxMessage
 
   protected function send_message(object $sms): void
   {
-    global $astman;
-    if (!$astman->connected()) {
-      $out = $astman->Command('sip show registry');
-      echo $out['data'];
-    } else {
-      self::log_message("no asterisk manager connection");
-      return;
-    }
-
     self::debug_message("Received a message ".$sms->id);
     if (preg_match("/\+1([2-9]\d{2}[2-9]\d{6})/", $sms->to[0]->phone_number, $matches)) {
-      // Find the recipient in astdb
       $to = $matches[1];
 
-      $output = $astman->Command('database showkey accountcode');
+      $extensions = $this->lookupReceivers($to);
 
-      $count = preg_match_all("#AMPUSER/(\d+)/accountcode.*: ([\d,]*)\s*$#m", $output['data'], $extensions, PREG_SET_ORDER);
+      self::debug_message(str(count($extensions))." extensions");
+      self::debug_message("To: ".$to);
+      $msgFrom = str_replace("+", "", $sms->from->phone_number);
+      foreach ($extensions as $ext) {
+        self::debug_message("Sending to Ext ".$ext);
+        $astman->MessageSend("pjsip:$ext@127.0.0.1", $msgFrom, $sms->text);
+      }
+    } else {
+      self::debug_message("Nowhere to send ".$sms->id);
+    }
+  }
 
-      self::debug_message($count." extensions");
-      if ($count) {
-        self::debug_message("To: ".$to);
-        $msgFrom = str_replace("+", "", $sms->from->phone_number);
-        foreach ($extensions as $ext) {
-          $user=$ext[1];
-          self::debug_message("User ".$user);
-          $codes=explode(',', $ext[2]);
-          foreach ($codes as $code) {
-            self::debug_message("Code ".$code);
-            if ($code == $to) {
-              self::debug_message("Found a match, sending to ext: ".$user);
-              $astman->MessageSend("pjsip:$user@127.0.0.1", $msgFrom, $sms->text);
-            }
-          }
-        }
-      } else {
-        self::debug_message("Database entries:\n".$output);
-        self::debug_message("Nowhere to send ".$sms->id);
+  protected function lookupReceivers(string $tonumber) : array
+  {
+    global $db;
+    $extens = array();
+
+    $sql = 'select Exten from smsnumbers join smsextens on smsextens.Phone_ID = smsnumbers.id where Phone = ":number"; ';
+    $stmt = $db-prepare($sql);
+    if ($stmt !== false) {
+      $stmt->bind(":number", $tonumber);
+      $result = $stmt->execute();
+      if ($result !== false) {
+        $extens = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
       }
     }
+    return $extens;
   }
 
   const DEFAULT_TOLERANCE = 300;
@@ -516,16 +509,16 @@ class TelnyxMessage
 
       $result = $stmtQuery->execute();
       if ($result !== false) {
-      while (($row = $stmtQuery->fetch(PDO::FETCH_ASSOC)) !== false) {
+        while (($row = $stmtQuery->fetch(PDO::FETCH_ASSOC)) !== false) {
           $result_rows[] = $row;
         }
-      }
 
-      $headings = $headings && $skip == 0;
-      $skip += count($result_rows);
+        $headings = $headings && $skip == 0;
+        $skip += count($result_rows);
 
-      if ($csv && count($result_rows) > 0) {
-        $result_rows = $this->ArrayToCSV($result_rows, $headings);
+        if ($csv && count($result_rows) > 0) {
+          $result_rows = $this->ArrayToCSV($result_rows, $headings);
+        }
       }
     }
 

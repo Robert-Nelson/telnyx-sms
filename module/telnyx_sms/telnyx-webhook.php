@@ -1,5 +1,5 @@
 <?php
-const APP_DIR = '/var/www/html/admin/modules/telnyx_sys';
+const APP_DIR = '/var/www/html/admin/modules/telnyx_sms';
 require_once APP_DIR . '/TelnyxMessage.class.php';
 
 $signature = $_SERVER['HTTP_TELNYX_SIGNATURE_ED25519'];
