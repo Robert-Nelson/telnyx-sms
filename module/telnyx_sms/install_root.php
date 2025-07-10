@@ -14,9 +14,42 @@ if ($id !== 0) {
   exit(1);
 }
 
+/* Bootstrap Settings:
+ *
+ * bootstrap_settings['skip_astman']           - legacy $skip_astman, default false
+ *
+ * bootstrap_settings['astman_config']         - default null, config arguemnt when creating new Astman
+ * bootstrap_settings['astman_options']        - default array(), config options creating new Astman
+ *                                               e.g. array('cachemode' => true), see astman documentation
+ * bootstrap_settings['astman_events']         - default 'off' used when connecting, Astman defaults to 'on'
+ *
+ * bootstrap_settings['freepbx_error_handler'] - false don't set it, true use default, named use what is passed
+ *
+ * bootstrap_settings['freepbx_auth']          - true (default) - authorize, false - bypass authentication
+ *
+ * $restrict_mods: false means include all modules functions.inc.php, true skip all modules
+ *                 array of hashes means each module where there is a hash
+ *                 e.g. $restrict_mods = array('core' => true, 'dashboard' => true)
+ *
+ * Settings that are set by bootstrap to indicate the results of what was setup and not:
+ *
+ * $bootstrap_settings['framework_functions_included'] = true/false;
+ * $bootstrap_settings['amportal_conf_initialized'] = true/false;
+ * $bootstrap_settings['astman_connected'] = false/false;
+ * $bootstrap_settings['function_modules_included'] = true/false true if one or more were included, false if all were skipped;
+ * $bootstrap_settings['returnimmediately'] = true; //return right after freepbx.conf is loaded. Essentially only get database connection variables
+ * $bootstrap_settings['report_error_link'] = true; //show the report to FreePBX link in page errors
+ */
+
+$bootstrap_settings = array();
+$bootstrap_settings['skip_astman'] = true;
+$bootstrap_settings['freepbx_auth'] = false;
+
+$restrict_mods = array('core' => true);
+
 include "/etc/freepbx.conf";
 
-global $amp_conf;
+global $amp_conf, $db;
 
 // Retrieve database and table name if defined, otherwise use FreePBX default
 $db_name = !empty($amp_conf['TSMSDBNAME'])?$amp_conf['TSMSDBNAME']:"telnyx_messages";
@@ -131,7 +164,7 @@ chmod("/var/log/asterisk/telnyx-sms.log", 0640);
 $symlinks = array(
   array(__DIR__."/freepbx-telnyx-sms.logrotate", "/etc/logrotate.d/freepbx-telnyx-sms", "root", "root"),
   array(__DIR__."/telnyx-send.php", "/var/www/html/telnyx-send.php", "asterisk", "asterisk"),
-  array(__DIR__."/telnyx-webhook.php", "/var/www/html/telnyx-webhook.php", "asterisk", "asterisk")
+  array(__DIR__."/telnyx-webhook.php", "/var/www/html/telnyx-webhook.php", "asterisk", "asterisk"),
 );
 
 foreach ($symlinks as $link) {

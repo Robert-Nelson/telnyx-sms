@@ -9,6 +9,7 @@ if (!defined('FREEPBX_IS_AUTH')) { die('No direct script access allowed'); }
 function telnyx_sms_get_config($engine): void
 {
   global $core_conf, $amp_conf, $version;
+  
   if (isset($core_conf) && is_a($core_conf, "core_conf")) {
     $section = 'telnyxsmsdb';
     $core_conf->addResOdbc($section, ['enabled' => 'yes']);
@@ -23,5 +24,17 @@ function telnyx_sms_get_config($engine): void
     $core_conf->addResOdbc($section, ['username' => !empty($amp_conf['TSMSDBUSER']) ? $amp_conf['TSMSDBUSER'] : $amp_conf['AMPDBUSER']]);
     $core_conf->addResOdbc($section, ['password' => !empty($amp_conf['TSMSDBPASS']) ? $amp_conf['TSMSDBPASS'] : $amp_conf['AMPDBPASS']]);
     $core_conf->addResOdbc($section, ['database' => !empty($amp_conf['TSMSDBNAME']) ? $amp_conf['TSMSDBNAME'] : 'telnyx_messages']);
+  }
+
+  global $db, $astman;
+
+  if ($astman->connected()) {
+    $astman->database_deltree("TELNYX-SMS");
+    $sql = "SELECT Exten, Phone FROM smsnumbers INNER JOIN smscid ON smscid.Phone_ID = smsnumbers.ID;";
+    $stmt = $db->prepare($sql);
+    $result = $stmt->execute();
+    while ($row = $stmt->fetch(PDO::FETCH_NUM, PDO::FETCH_ORI_NEXT)) {
+      $astman->database_put("TELNYX-SMS", "$row[0]/cid", $row[1]);
+    }
   }
 }
