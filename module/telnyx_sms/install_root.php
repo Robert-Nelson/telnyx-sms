@@ -1,10 +1,7 @@
 <?php
 // if (!defined('FREEPBX_IS_AUTH')) { die('No direct script access allowed'); }
 //	License for all code of this FreePBX module can be found in the license file inside the module directory
-//  Portions Copyright (C) 2011 Mikael Carlsson
-//	Copyright 2013 Schmooze Com Inc.
-//
-// Update cdr database with did field
+//  Copyright (C) 2025 Robert Nelson
 //
 
 $id = posix_getuid();

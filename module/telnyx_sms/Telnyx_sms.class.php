@@ -66,7 +66,7 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
 
 //$pdo = new Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name,$db_user,$db_pass);
 
-    $pdo = new Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name);
+    $pdo = new $this->FreePBX->Database($db_type.':host='.$db_host.$db_port.';dbname='.$db_name);
 
     $CreateTables = array(
         "CREATE TABLE IF NOT EXISTS TelnyxMessageProfile (
@@ -146,7 +146,7 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
       }
     }
 
-    $pmsg = new TelnyxMessage();
+    $pmsg = new \TelnyxMessage();
 
     $pmsg->init_lookup_table();
 
@@ -169,50 +169,51 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
 
 // 'true' references the default priority of '500'
   public function doDialplanHook(&$ext, $engine, $priority) {
-    $ext->addSectionNoCustom("telnyx-sms", true);
-    $ext->addSectionComment("telnyx-sms", "This is a local 3-digit extension so we just want to send it internally");
-    $ext->add("telnyx-sms", "_XXX", 1, new ext_goto(1, 'local-${exten}'));
+    $id = 'telnyx-sms';
+    $ext->addSectionNoCustom($id, true);
+//    $ext->addSectionComment($id, 'This is a local 3-digit extension so we just want to send it internally');
+    $ext->add($id, '_XXX', '', new \ext_goto('1', 'local-${EXTEN}'));
     // Deliver to PSTN - adjust pattern to match your needs
     // These are normalized so that we are working with 10-digit US/CAN numbers and then reformatted
-    $ext->add("telnyx-sms", "_+1NXXNXXXXXX", 1, new ext_goto(1, '$EXTEN:2'));
-    $ext->add("te3nyx-sms", "_1NXXNXXXXXX", 1, new ext_goto(1, '${EXTEN:1}'));
-//    $ext->add("telnyx-sms", "_NXXNXXXXXX", 1, new ext_verbose(0, 'Sending SMS to ${EXTEN} from ${MESSAGE(from)}'));
-    $ext->add("telnyx-sms", "_NXXNXXXXXX", 1, new ext_noop('Sending SMS to ${EXTEN} from ${MESSAGE(from)}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("FROMUSER", '${CUT(MESSAGE(from),<,2)}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("FROMUSER", '${CUT(FROMUSER,@,1)})'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("FROMUSER", '${CUT(FROMUSER,:,2)}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("CALLERID(num)", '${FROMUSER})'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("SMSCID", '${DB(TELNYX-SMS/${CALLERID(num)}/cid)})'));
-    $ext->add("telnyx-sms", "same", "n", new ext_execif('$[\'foo${SMSCID}\' == \'foo\']', new ext_goto(1, "nocid"), new ext_set("FROM", '${SMSCID}')));
-//    $ext->add("telnyx-sms", "same", "n", new ext_verbose(0, 'Using external caller ID of ${FROM}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_noop('Using external caller ID of ${FROM}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("CURLOPT(conntimeout)", 30));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("CURLOPT(httptimeout)", 30));
-//    $ext->add("telnyx-sms", "same", "n", new ext_verbose(0, '${CURL(https://freepbx.home.nelson.house:6443/telnyx-send.php?to=${EXTEN}&from=${FROM},${MESSAGE(body)})}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_noop('${CURL(https://freepbx.home.nelson.house:6443/telnyx-send.php?to=${EXTEN}&from=${FROM},${MESSAGE(body)})}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_hangup());
+    $ext->add($id, '_+1NXXNXXXXXX', '', new \ext_goto(1, '${EXTEN:2}'));
+    $ext->add($id, '_1NXXNXXXXXX', '', new \ext_goto(1, '${EXTEN:1}'));
+//    $ext->add($id, '_NXXNXXXXXX', '', new \ext_verbose(0, 'Sending SMS to ${EXTEN} from ${MESSAGE(from)}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_noop('Sending SMS to ${EXTEN} from ${MESSAGE(from)}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('FROMUSER', '${CUT(MESSAGE(from),<,2)}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('FROMUSER', '${CUT(FROMUSER,@,1)})'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('FROMUSER', '${CUT(FROMUSER,:,2)}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('CALLERID(num)', '${FROMUSER})'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('SMSCID', '${DB(TELNYX-SMS/${CALLERID(num)}/cid)})'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_execif('$["foo${SMSCID}" == "foo"]', 'Goto', 'nocid,1', 'Set', 'FROM=${SMSCID}'));
+//    $ext->add($id, '_NXXNXXXXXX', '', new \ext_verbose(0, 'Using external caller ID of ${FROM}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_noop('Using external caller ID of ${FROM}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('CURLOPT(conntimeout)', 30));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('CURLOPT(httptimeout)', 30));
+//    $ext->add($id, '_NXXNXXXXXX', '', new \ext_verbose(0, '${CURL(https://freepbx.home.nelson.house:6443/telnyx-send.php?to=${EXTEN}&from=${FROM},${MESSAGE(body)})}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_noop('${CURL(https://freepbx.home.nelson.house:6443/telnyx-send.php?to=${EXTEN}&from=${FROM},${MESSAGE(body)})}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_hangup());
     //
-    $ext->add("telnyx-sms", "nocid", 1, new ext_set("MESSAGE(body)", "This extension is not configured for sending SMS messages."));
-    $ext->add("telnyx-sms", "same", "n", new ext_messagesend('pjsip:${CALLERID(num)}','${MESSAGE(from)}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_hangup());
+    $ext->add($id, 'nocid', '', new \ext_set('MESSAGE(body)', 'This extension is not configured for sending SMS messages.'));
+    $ext->add($id, 'nocid', '', new \ext_messagesend('pjsip:${CALLERID(num)}','${MESSAGE(from)}'));
+    $ext->add($id, 'nocid', '', new \ext_hangup());
     //
     // Deliver to local 4-digit extension. If you use 3, 5 or other length extensions, adjust accordingly.
     // to +1 E164 in the outbound script. Rework it according to your preferences.
-    $ext->add("telnyx-sms", "_local-X.", 1, new ext_set("FROMUSER", '${CUT(MESSAGE(from),<,2)}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("FROMUSER", '${CUT(FROMUSER,@,1)}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("FROMUSER", '${CUT(FROMUSER,:,2)}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("FROMUSER", '${REPLACE(FROMUSER,+)}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("TODEVICE", '${DB(DEVICE/${EXTEN:6}/dial)}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_set("TODEVICE", '${TOLOWER(${STRREPLACE(TODEVICE,"/",":")})}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_messagesend('${TODEVICE}', '${FROMUSER}'));
-    $ext->add("telnyx-sms", "same", "n", new ext_execif('$["${MESSAGE_SEND_STATUS}" == "FAILURE"]', new ext_goto(1, 'mail-${EXTEN:6}')));
-    $ext->add("telnyx-sms", "same", "n", new ext_hangup());
+    $ext->add($id, '_local-X.', '', new \ext_set('FROMUSER', '${CUT(MESSAGE(from),<,2)}'));
+    $ext->add($id, '_local-X.', '', new \ext_set('FROMUSER', '${CUT(FROMUSER,@,1)}'));
+    $ext->add($id, '_local-X.', '', new \ext_set('FROMUSER', '${CUT(FROMUSER,:,2)}'));
+    $ext->add($id, '_local-X.', '', new \ext_set('FROMUSER', '${REPLACE(FROMUSER,+)}'));
+    $ext->add($id, '_local-X.', '', new \ext_set('TODEVICE', '${DB(DEVICE/${EXTEN:6}/dial)}'));
+    $ext->add($id, '_local-X.', '', new \ext_set('TODEVICE', '${TOLOWER(${STRREPLACE(TODEVICE,"/",":")})}'));
+    $ext->add($id, '_local-X.', '', new \ext_messagesend('${TODEVICE}', '${FROMUSER}'));
+    $ext->add($id, '_local-X.', '', new \ext_execif('$["${MESSAGE_SEND_STATUS}" == "FAILURE"]', 'Goto', 'mail-${EXTEN:6},1'));
+    $ext->add($id, '_local-X.', '', new \ext_hangup());
     // This could be improved. Any undeliverable SMS just gets sent to a catch-all email address. You
     // could look up the extension user's email and send the message to their specific address instead.
-//    $ext->add("telnyx-sms", "_mail-X.", 1, new ext_verbose(0, "Sending mail"));
-    $ext->add("telnyx-sms", "_mail-X.", 1, new ext_noop("Sending mail"));
-    $ext->add("telnyx-sms", "same", "n",new ext_system('echo "Text message from ${MESSAGE(from)} to ${EXTEN:5} - ${MESSAGE(body)}" | mail -s "New text received while offline" robert-sms@nelson.house'));
-    $ext->add("telnyx-sms", "same", "n", new ext_hangup());
+//    $ext->add($id, '_mail-X.', '', new \ext_verbose(0, 'Sending mail'));
+    $ext->add($id, '_mail-X.', '', new \ext_noop('Sending mail'));
+    $ext->add($id, '_mail-X.', '',new \ext_system('echo "Text message from ${MESSAGE(from)} to ${EXTEN:5} - ${MESSAGE(body)}" | mail -s "New text received while offline" robert-sms@nelson.house'));
+    $ext->add($id, '_mail-X.', '', new \ext_hangup());
   }
 
   //process form

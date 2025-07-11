@@ -9,7 +9,7 @@ if (!defined('FREEPBX_IS_AUTH')) { die('No direct script access allowed'); }
 function telnyx_sms_get_config($engine): void
 {
   global $core_conf, $amp_conf, $version;
-  
+
   if (isset($core_conf) && is_a($core_conf, "core_conf")) {
     $section = 'telnyxsmsdb';
     $core_conf->addResOdbc($section, ['enabled' => 'yes']);
