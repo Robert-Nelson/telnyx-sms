@@ -1,7 +1,7 @@
 <module>
   <rawname>telnyx_sms</rawname>
   <name>Telnyx SMS</name>
-  <version>0.99.4</version>
+  <version>0.99.5</version>
   <publisher>Robert Nelson &lt;robert-telnyx-sms@nelson.house&gt;</publisher>
   <license>AGPLv3</license>
   <changelog>*0.99.0* Initial release</changelog>

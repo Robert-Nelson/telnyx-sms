@@ -163,7 +163,6 @@ unlink("/var/log/asterisk/telnyx-sms.log");
 
 $symlinks = array(
     "/etc/logrotate.d/freepbx-telnyx-sms",
-    "/var/www/html/telnyx-send.php",
     "/var/www/html/telnyx-webhook.php"
 );
 

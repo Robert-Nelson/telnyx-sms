@@ -19,8 +19,8 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
 
   public function __construct($freepbx){
     parent::__construct($freepbx);
-    $this->FreePBX = $freepbx;
-    $this->db = $freepbx->Database();
+    // $this->FreePBX = $freepbx;
+    // $this->db = $freepbx->Database();
   }
 
   //Install method. use this or install.php using both may cause weird behavior
@@ -180,17 +180,15 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
 //    $ext->add($id, '_NXXNXXXXXX', '', new \ext_verbose(0, 'Sending SMS to ${EXTEN} from ${MESSAGE(from)}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_noop('Sending SMS to ${EXTEN} from ${MESSAGE(from)}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('FROMUSER', '${CUT(MESSAGE(from),<,2)}'));
-    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('FROMUSER', '${CUT(FROMUSER,@,1)})'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('FROMUSER', '${CUT(FROMUSER,@,1)}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('FROMUSER', '${CUT(FROMUSER,:,2)}'));
-    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('CALLERID(num)', '${FROMUSER})'));
-    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('SMSCID', '${DB(TELNYX-SMS/${CALLERID(num)}/cid)})'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('CALLERID(num)', '${FROMUSER}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('SMSCID', '${DB(TELNYX-SMS/${CALLERID(num)}/cid)}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_execif('$["foo${SMSCID}" == "foo"]', 'Goto', 'nocid,1', 'Set', 'FROM=${SMSCID}'));
 //    $ext->add($id, '_NXXNXXXXXX', '', new \ext_verbose(0, 'Using external caller ID of ${FROM}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_noop('Using external caller ID of ${FROM}'));
-    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('CURLOPT(conntimeout)', 30));
-    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('CURLOPT(httptimeout)', 30));
-//    $ext->add($id, '_NXXNXXXXXX', '', new \ext_verbose(0, '${CURL(https://freepbx.home.nelson.house:6443/telnyx-send.php?to=${EXTEN}&from=${FROM},${MESSAGE(body)})}'));
-    $ext->add($id, '_NXXNXXXXXX', '', new \ext_noop('${CURL(https://freepbx.home.nelson.house:6443/telnyx-send.php?to=${EXTEN}&from=${FROM},${MESSAGE(body)})}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('MESSAGE_BODY','${URIENCODE(${MESSAGE(body)})}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_system('php '.__DIR__.'/telnyx-send.php ${EXTEN} ${FROM} ${MESSAGE_BODY}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_hangup());
     //
     $ext->add($id, 'nocid', '', new \ext_set('MESSAGE(body)', 'This extension is not configured for sending SMS messages.'));
@@ -214,6 +212,64 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     $ext->add($id, '_mail-X.', '', new \ext_noop('Sending mail'));
     $ext->add($id, '_mail-X.', '',new \ext_system('echo "Text message from ${MESSAGE(from)} to ${EXTEN:5} - ${MESSAGE(body)}" | mail -s "New text received while offline" robert-sms@nelson.house'));
     $ext->add($id, '_mail-X.', '', new \ext_hangup());
+  }
+
+  // File Hooks
+  public function genConfig() {
+    global $core_conf, $amp_conf, $version;
+
+    $conf = [];
+
+    if (isset($core_conf) && is_a($core_conf, "core_conf")) {
+      $ResOdbc['enabled'] = 'yes';
+      $ResOdbc['dsn'] = 'MySQL-telnyx_messages';
+      $ResOdbc['pre-connect'] = 'yes';
+      if ((version_compare($version, "14.0", "lt") && version_compare($version, "13.14.0", "ge")) || (version_compare($version, "14.0", "ge") && version_compare($version, "14.3.0", "ge"))) {
+        $ResOdbc['max_connections'] = '5';
+      } else {
+        $ResOdbc['pooling'] = 'no';
+        $ResOdbc['limit'] = '1';
+      }
+
+      $ResOdbc['username'] = !empty($amp_conf['TSMSDBUSER']) ? $amp_conf['TSMSDBUSER'] : $amp_conf['AMPDBUSER'];
+      $ResOdbc['password'] = !empty($amp_conf['TSMSDBPASS']) ? $amp_conf['TSMSDBPASS'] : $amp_conf['AMPDBPASS'];
+      $ResOdbc['database'] = !empty($amp_conf['TSMSDBNAME']) ? $amp_conf['TSMSDBNAME'] : 'telnyx_messages';
+
+      $conf['ResOdbc'] = ['Telnyxsmsdb' => $ResOdbc ];
+    }
+
+    global $db, $astman;
+
+    $sql = "SELECT Exten, Phone FROM smsnumbers INNER JOIN smscid ON smscid.Phone_ID = smsnumbers.ID;";
+    $stmt = $db->prepare($sql);
+    $result = $stmt->execute();
+    $rows = $stmt->fetchall();
+
+    $conf['telnyx-sms'] = $rows;
+
+    dbug("genConfig", $conf);
+    return $conf;
+  }
+
+  public function writeConfig($conf) {
+    if (isset($core_conf) && is_a($core_conf, "core_conf")) {
+      $section = 'telnyxsmsdb';
+      foreach ($conf['ResOdbc'] as $section => $settings) {
+        foreach ($settings as $key => $value) {
+          $core_conf->addResOdbc($section, [$key => $value]);
+        }
+      }
+    }
+
+    global $astman;
+
+    if ($astman->connected()) {
+      $astman->database_deltree("TELNYX-SMS");
+      foreach ($conf['telnyx-sms'] as $row) {
+        $astman->database_put("TELNYX-SMS", "$row[0]/cid", $row[1]);
+      }
+    }
+    return $conf;
   }
 
   //process form

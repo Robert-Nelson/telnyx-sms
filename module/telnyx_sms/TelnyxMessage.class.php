@@ -158,7 +158,7 @@ class TelnyxMessage
   {
     // Record the message
     self::log_message(
-        "Received from PBX, SMS to " . $_GET["to"] . ", from " . $_GET["from"],
+        "Received from PBX, SMS to " . $to . ", from " . $from,
         self::$debug ? $body : null);
     // set up curl and send message
     $http_body = json_encode(

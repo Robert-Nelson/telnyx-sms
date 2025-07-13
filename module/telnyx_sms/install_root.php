@@ -160,7 +160,6 @@ chmod("/var/log/asterisk/telnyx-sms.log", 0640);
 
 $symlinks = array(
   array(__DIR__."/freepbx-telnyx-sms.logrotate", "/etc/logrotate.d/freepbx-telnyx-sms", "root", "root"),
-  array(__DIR__."/telnyx-send.php", "/var/www/html/telnyx-send.php", "asterisk", "asterisk"),
   array(__DIR__."/telnyx-webhook.php", "/var/www/html/telnyx-webhook.php", "asterisk", "asterisk"),
 );
 
