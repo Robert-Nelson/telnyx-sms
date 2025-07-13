@@ -146,6 +146,15 @@ if (!empty($amp_conf["TSMSDBHOST"]) && !empty($amp_conf["TSMSDBTYPE"])) {
   }
 }
 
+$db_hash = ['mysql' => 'mysql', 'postgres' => 'pgsql'];
+$dbt = !empty($dbt) ? $dbt : 'mysql';
+$db_type = $db_hash[$dbt];
+$db_name = !empty($db_name) ? $db_name : "telnyx_messages";
+$db_host = empty($db_host) ?  $amp_conf['AMPDBHOST'] : $db_host;
+$db_port = empty($db_port) ? '' :  ';port=' . $db_port;
+$db_user = empty($db_user) ? $amp_conf['AMPDBUSER'] : $db_user;
+$db_pass = empty($db_pass) ? $amp_conf['AMPDBPASS'] : $db_pass;
+
 try {
   $pdo = new Database($db_type . ':host=' . $db_host . $db_port, "root");
 } catch (Exception $e) {
