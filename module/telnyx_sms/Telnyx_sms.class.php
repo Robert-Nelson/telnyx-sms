@@ -11,7 +11,6 @@ use BMO;
 use FreePBX_Helpers;
 
 require_once(__DIR__ . '/TelnyxMessage.class.php');
-require_once(__DIR__ . '/functions.inc.php');
 
 class Telnyx_sms extends FreePBX_Helpers implements BMO {
   protected object $FreePBX;
@@ -19,8 +18,8 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
 
   public function __construct($freepbx){
     parent::__construct($freepbx);
-    // $this->FreePBX = $freepbx;
-    // $this->db = $freepbx->Database();
+    $this->FreePBX = $freepbx;
+    $this->db = $freepbx->Database();
   }
 
   //Install method. use this or install.php using both may cause weird behavior
@@ -171,7 +170,9 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
   public function doDialplanHook(&$ext, $engine, $priority) {
     $id = 'telnyx-sms';
     $ext->addSectionNoCustom($id, true);
-//    $ext->addSectionComment($id, 'This is a local 3-digit extension so we just want to send it internally');
+//    $ext->addSectionComment($id, 'This is a 3, 4 or 5 digit extension so we just want to send it internally');
+    $ext->add($id, '_XXXXX', '', new \ext_goto('1', 'local-${EXTEN}'));
+    $ext->add($id, '_XXXX', '', new \ext_goto('1', 'local-${EXTEN}'));
     $ext->add($id, '_XXX', '', new \ext_goto('1', 'local-${EXTEN}'));
     // Deliver to PSTN - adjust pattern to match your needs
     // These are normalized so that we are working with 10-digit US/CAN numbers and then reformatted
@@ -247,7 +248,6 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
 
     $conf['telnyx-sms'] = $rows;
 
-    dbug("genConfig", $conf);
     return $conf;
   }
 
