@@ -153,7 +153,13 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
   }
 
   //Uninstall method. use this or install.php using both may cause weird behavior
-  public function uninstall() {}
+  public function uninstall() {
+    global $db;
+
+    $sql = "UPDATE sip SET data = '' WHERE keyword = 'message_context' AND data = \"telnyx-sms\";";
+    $stmt = $db->prepare($sql);
+    $result = $stmt->execute();
+  }
 
   //Not yet implemented
   public function backup() {}
@@ -185,34 +191,33 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('FROMUSER', '${CUT(FROMUSER,:,2)}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('CALLERID(num)', '${FROMUSER}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('SMSCID', '${DB(TELNYX-SMS/${CALLERID(num)}/cid)}'));
-    $ext->add($id, '_NXXNXXXXXX', '', new \ext_execif('$["foo${SMSCID}" == "foo"]', 'Goto', 'nocid,1', 'Set', 'FROM=${SMSCID}'));
+    $ext->add($id, '_NXXNXXXXXX', '', new \ext_execif('$["${SMSCID}" == ""]', 'Goto', 'nocid,1', 'Set', 'FROM=${SMSCID}'));
 //    $ext->add($id, '_NXXNXXXXXX', '', new \ext_verbose(0, 'Using external caller ID of ${FROM}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_noop('Using external caller ID of ${FROM}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_set('MESSAGE_BODY','${URIENCODE(${MESSAGE(body)})}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_system('php '.__DIR__.'/telnyx-send.php ${EXTEN} ${FROM} ${MESSAGE_BODY}'));
     $ext->add($id, '_NXXNXXXXXX', '', new \ext_hangup());
-    //
+
     $ext->add($id, 'nocid', '', new \ext_set('MESSAGE(body)', 'This extension is not configured for sending SMS messages.'));
     $ext->add($id, 'nocid', '', new \ext_messagesend('pjsip:${CALLERID(num)}','${MESSAGE(from)}'));
     $ext->add($id, 'nocid', '', new \ext_hangup());
-    //
-    // Deliver to local 4-digit extension. If you use 3, 5 or other length extensions, adjust accordingly.
-    // to +1 E164 in the outbound script. Rework it according to your preferences.
+
+    // Deliver to local 3-5 digit extension.
     $ext->add($id, '_local-X.', '', new \ext_set('FROMUSER', '${CUT(MESSAGE(from),<,2)}'));
     $ext->add($id, '_local-X.', '', new \ext_set('FROMUSER', '${CUT(FROMUSER,@,1)}'));
     $ext->add($id, '_local-X.', '', new \ext_set('FROMUSER', '${CUT(FROMUSER,:,2)}'));
     $ext->add($id, '_local-X.', '', new \ext_set('FROMUSER', '${REPLACE(FROMUSER,+)}'));
-    $ext->add($id, '_local-X.', '', new \ext_set('TODEVICE', '${DB(DEVICE/${EXTEN:6}/dial)}'));
-    $ext->add($id, '_local-X.', '', new \ext_set('TODEVICE', '${TOLOWER(${STRREPLACE(TODEVICE,"/",":")})}'));
-    $ext->add($id, '_local-X.', '', new \ext_messagesend('${TODEVICE}', '${FROMUSER}'));
+    $ext->add($id, '_local-X.', '', new \ext_set('TOUSER', 'pjsip:${EXTEN:6}'));
+    $ext->add($id, '_local-X.', '', new \ext_messagesend('${TOUSER}','${MESSAGE(from)}'));
     $ext->add($id, '_local-X.', '', new \ext_execif('$["${MESSAGE_SEND_STATUS}" == "FAILURE"]', 'Goto', 'mail-${EXTEN:6},1'));
     $ext->add($id, '_local-X.', '', new \ext_hangup());
-    // This could be improved. Any undeliverable SMS just gets sent to a catch-all email address. You
-    // could look up the extension user's email and send the message to their specific address instead.
 //    $ext->add($id, '_mail-X.', '', new \ext_verbose(0, 'Sending mail'));
     $ext->add($id, '_mail-X.', '', new \ext_noop('Sending mail'));
-    $ext->add($id, '_mail-X.', '',new \ext_system('echo "Text message from ${MESSAGE(from)} to ${EXTEN:5} - ${MESSAGE(body)}" | mail -s "New text received while offline" robert-sms@nelson.house'));
+    $ext->add($id, '_mail-X.', '', new \ext_set('TOEMAIL', '${DB(TELNYX-SMS/${EXTEN:5}/email)}'));
+    $ext->add($id, '_mail-X.', '', new \ext_execif('$["${TOEMAIL}" == ""]', 'Goto', 'noemail,1', 'Noop', ''));
+    $ext->add($id, '_mail-X.', '', new \ext_system('echo "Text message from ${MESSAGE(from)} to ${EXTEN:5} - ${MESSAGE(body)}" | mail -s "New text received - Undeliverable" ${TOEMAIL}'));
     $ext->add($id, '_mail-X.', '', new \ext_hangup());
+    $ext->add($id, 'noemail', '', new \ext_hangup());
   }
 
   // File Hooks
@@ -246,7 +251,21 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     $result = $stmt->execute();
     $rows = $stmt->fetchall();
 
-    $conf['telnyx-sms'] = $rows;
+    $conf['telnyx-cid'] = $rows;
+
+    $sql = "SELECT Exten, Email FROM smsemail;";
+    $stmt = $db->prepare($sql);
+    $result = $stmt->execute();
+    $rows = $stmt->fetchall();
+
+    $conf['telnyx-email'] = $rows;
+
+    $sql = "SELECT id, keyword, \"telnyx-sms\" FROM sip where keyword = \"message_context\";";
+    $stmt = $db->prepare($sql);
+    $result = $stmt->execute();
+    $rows = $stmt->fetchall();
+
+    $conf['sip'] = $rows;
 
     return $conf;
   }
@@ -265,10 +284,20 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
 
     if ($astman->connected()) {
       $astman->database_deltree("TELNYX-SMS");
-      foreach ($conf['telnyx-sms'] as $row) {
+      foreach ($conf['telnyx-cid'] as $row) {
         $astman->database_put("TELNYX-SMS", "$row[0]/cid", $row[1]);
       }
+      foreach ($conf['telnyx-email'] as $row) {
+        $astman->database_put("TELNYX-SMS", "$row[0]/email", $row[1]);
+      }
     }
+
+    global $db;
+
+    $sql = "UPDATE sip SET data = 'telnyx-sms' WHERE keyword = 'message_context';";
+    $stmt = $db->prepare($sql);
+    $result = $stmt->execute();
+
     return $conf;
   }
 
@@ -349,6 +378,11 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
           $num = json_decode($_POST['extnumbers'], true);
           $this->writeExtNumbers($num);
         }
+        if (isset($_POST['smsemail'])) {
+          dbug("action = smsext - smsemail", $_POST['smsemail'], 1);
+          $emails = json_decode($_POST['smsemail'], true);
+          $this->writeSmsEmail($emails);
+        }
       }
     }
   }
@@ -358,12 +392,6 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     $this->db->beginTransaction();
     $place_holders = '?' . str_repeat(', ?', count($extens) - 1);
     $sql = "DELETE FROM smscid WHERE Exten NOT IN ($place_holders);";
-    $stmt = $this->db->prepare($sql);
-    dbug($sql);
-    $result = $stmt->execute($extens);
-    dbug("result", $result);
-
-    $sql = "UPDATE sip SET data = '' WHERE keyword = 'message_context' AND data = 'telnyx-sms' AND id NOT IN ($place_holders);";
     $stmt = $this->db->prepare($sql);
     dbug($sql);
     $result = $stmt->execute($extens);
@@ -380,10 +408,30 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     $result = $stmt->execute();
     dbug("result", $result);
 
-    $sql = "UPDATE sip SET data = 'telnyx-sms' WHERE keyword = 'message_context' AND id IN ($place_holders);";
+    $this->db->commit();
+    needreload();
+    return $result;
+  }
+
+  public function writeSmsEmail($emails) {
+    $extens = array_keys($emails);
+    $this->db->beginTransaction();
+    $place_holders = '?' . str_repeat(', ?', count($extens) - 1);
+    $sql = "DELETE FROM smsemail WHERE Exten NOT IN ($place_holders);";
     $stmt = $this->db->prepare($sql);
     dbug($sql);
     $result = $stmt->execute($extens);
+    dbug("result", $result);
+
+    $sql = "REPLACE INTO smsemail (Exten, Email) VALUES ";
+    foreach ($extens as $ext) {
+      $sql .= "(\"$ext\", \"$emails[$ext]\"), ";
+    }
+    $sql = substr($sql, 0, -2);
+    $sql .= ";";
+    $stmt = $this->db->prepare($sql);
+    dbug($sql);
+    $result = $stmt->execute();
     dbug("result", $result);
 
     $this->db->commit();
@@ -501,13 +549,6 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
     return false;
   }
 
-/*
-    public function getRightNav($request):string {
-    $html = 'your custom html';
-    return $html;
-  }
-*/
-
   public function showPage(): false|string
   {
     $vars = array();
@@ -517,6 +558,6 @@ class Telnyx_sms extends FreePBX_Helpers implements BMO {
 
     }
     $vars['db'] = $this->db;
-    return load_view(__DIR__.'/views/grid.php', $vars);
+    return load_view(__DIR__ . '/views/tabs.php', $vars);
   }
 }

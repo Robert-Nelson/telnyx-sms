@@ -50,24 +50,49 @@ foreach ($rows as $row) {
   $extnumbers[$ext][] = $row["Phone_ID"];
 }
 
+// SmsEmail
+$stmt = $db->prepare("select * from smsemail;");
+$stmt->execute();
+$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$smsemail = array();
+foreach ($rows as $row) {
+  $smsemail[$row["Exten"]] = $row["Email"];
+}
+
 echo "var extens = ".json_encode($extens, JSON_PRETTY_PRINT).";\n";
 echo "var smsnumbers = ".json_encode($smsnumbers, JSON_PRETTY_PRINT).";\n";
 echo "var smsnumberkeys = ".json_encode($smsnumberkeys, JSON_PRETTY_PRINT).";\n";
 echo "var extcid = ".json_encode($extcid, JSON_PRETTY_PRINT).";\n";
 echo "var extnumbers = ".json_encode($extnumbers, JSON_PRETTY_PRINT).";\n";
+echo "var smsemail = ".json_encode($smsemail, JSON_PRETTY_PRINT).";\n";
 ?>
 function selectExtension(inputElement) {
-  var ext = inputElement.value;
+  let ext = inputElement.value;
 
-  var smscidElem =  document.getElementById("smscid");
-  smscidElem.value = smsnumbers[extcid[ext]["Phone_ID"]];
+  let smscidElem =  document.getElementById("smscid");
 
-  for (const phonekey in smsnumbers) {
-    var phone = smsnumbers[phonekey];
-    var elem = document.getElementById("check_"+phone);
-
-    elem.checked = ext in extnumbers && phone in extnumbers[ext];
+  if (smscidElem.selectedIndex != -1) {
+    smscidElem.item(smscidElem.selectedIndex).selected = false;
   }
+
+  if (ext in extcid) {
+    let option = smscidElem.namedItem("cid" + smsnumbers[extcid[ext]]);
+    option.selected = true;
+  } else {
+    smscidElem.item(0).selected = true;
+  }
+
+  for (const sms in smsnumbers) {
+    let phonekey = parseInt(sms);
+    let phone = smsnumbers[phonekey];
+    let elem = document.getElementById("check_"+phone);
+
+    elem.checked = ext in extnumbers && extnumbers[ext].includes(phonekey);
+  }
+
+  let smsemailElem =  document.getElementById("smsemail");
+
+  smsemailElem.value = ext in smsemail ? smsemail[ext] : "";
 }
 
 function selectCID(inputElement) {
@@ -106,6 +131,22 @@ function selectReceivedNumber(inputElement) {
     }
   }
 }
+
+function changeEmail(inputElement) {
+  let ext = document.getElementById("extension").value;
+
+  if (smsemail instanceof Array) {
+    smsemail = {};
+  }
+  if (inputElement.value !== "") {
+    smsemail[ext] = inputElement.value;
+  } else {
+    if (ext in smsemail) {
+      delete smsemail[ext];
+    }
+  }
+}
+
 </script>
 <?php
 $current_ext = $extens[0];
@@ -137,10 +178,10 @@ $current_ext = $extens[0];
       <tr>
         <td style="text-align: left">
           <br/>
-          <h2>Sent Caller ID</h2>
+          <h2>Caller ID for messages sent externally</h2>
           <label>SMS Number
             <select name="smscid" id="smscid" oninput="selectCID(this)">
-              <option value=""<?php
+              <option id="cidDisabled" value=""<?php
   $cidphone = NULL;
   if (array_key_exists($current_ext,$extcid)) {
     $cidkey = $extcid[$current_ext];
@@ -149,7 +190,7 @@ $current_ext = $extens[0];
   if (is_null($cidphone)) {
     echo " selected=\"selected\"";
   }
-  echo ">Send Disabled</option>\n";
+  echo ">Send to local extensions only</option>\n";
   foreach ($smsnumbers as $number) {
   echo "            <option id=cid$number value=\"$number\"";
   if ($cidphone === $number) {
@@ -177,6 +218,42 @@ $current_ext = $extens[0];
   }
   ?>
         </td>
+      </tr>
+      <!--Notification E-Mail-->
+      <tr>
+        <td style="text-align: left">
+          <br/>
+          <div class="element-container">
+            <div class="row">
+              <div class="col-md-12">
+                <div class="row">
+                  <div class="form-group">
+                    <div class="col-md-3">
+                      <label class="control-label" for="smsemail">
+                        <?php echo _("Notification E-Mail"); ?>
+                      </label>
+                      <i class="fa fa-question-circle fpbx-help-icon" data-for="smsemail"></i>
+                    </div>
+                    <div class="col-md-9">
+                      <input type="email" class="form-control" id="smsemail" name="smsemail"
+                             value="<?php echo array_key_exists($current_ext, $smsemail) ? $smsemail[$current_ext] : ""; ?>"
+                            onchange="changeEmail(this)" />
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12">
+                <span id="smsemail-help" class="help-block fpbx-help-block">
+                    <?php echo _("Email used to send notifications and text messages received while the extension was offline.") ?>
+                </span>
+              </div>
+            </div>
+          </div>
+        </td>
+        <!--END Extension-E-Mail-->
       </tr>
     </tbody>
   </table>

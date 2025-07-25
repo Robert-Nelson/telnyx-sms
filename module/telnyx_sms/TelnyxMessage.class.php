@@ -255,11 +255,16 @@ class TelnyxMessage
         $result = $astman->MessageSend("pjsip:$ext@127.0.0.1", $msgFrom, $sms->text);
         dbug("MessageSend: ", $result);
         dbug("MessageSendStatus", $MESSAGE_SEND_STATUS);
-        if ($result['Response'] == 'Error' or $MESSAGE_SEND_STATUS == 'Failure') {
-          $fh = popen("mail -r no-reply@nelson.house -s \"New text received while offline\" robert-sms@nelson.house");
-          fwrite($fh, "Text message from from $msgFrom to $to ($ext):\n$sms->text\n");
-          $result = pclose($fh);
-          dbug("pclose", $result);
+        if ($result['Response'] == 'Error' or $MESSAGE_SEND_STATUS == 'FAILURE') {
+          if ($astman->connected()) {
+            $email = $astman->database_get("TELNYX-SMS", "$ext/email");
+            if ($email !== false) {
+              $fh = popen("mail -r no-reply@nelson.house -s \"New text received - Undeliverable\" $email");
+              fwrite($fh, "Text message from $msgFrom to $to ($ext):\n$sms->text\n");
+              $result = pclose($fh);
+              dbug("pclose", $result);
+            }
+          }
         }
       }
     } else {

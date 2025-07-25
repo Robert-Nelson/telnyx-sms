@@ -1,7 +1,7 @@
 <module>
   <rawname>telnyx_sms</rawname>
   <name>Telnyx SMS</name>
-  <version>0.99.5</version>
+  <version>0.99.10</version>
   <publisher>Robert Nelson &lt;robert-telnyx-sms@nelson.house&gt;</publisher>
   <license>AGPLv3</license>
   <changelog>*0.99.0* Initial release</changelog>
@@ -34,13 +34,17 @@
       -->
     </table>
     <table name="smscid">
-      <field name="ID" type="integer" primarykey="true" autoincrement="true"/>
-      <field name="Exten" type="string" length="10"/>
+      <field name="Exten" type="string" length="10" primarykey="true"/>
       <field name="Phone_ID" type="integer"/>
-      <key name="UC_Exten_Phone_ID" type="unique">
-        <column name="Exten"/>
+      <!--
+      <key name="FK_Phone_ID" type="foreign" foreigntable="smsnumbers" foreigncols="ID">
         <column name="Phone_ID"/>
       </key>
+      -->
+    </table>
+    <table name="smsemail">
+      <field name="Exten" type="string" length="10" primarykey="true"/>
+      <field name="Email" type="string"/>
       <!--
       <key name="FK_Phone_ID" type="foreign" foreigntable="smsnumbers" foreigncols="ID">
         <column name="Phone_ID"/>

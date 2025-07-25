@@ -54,6 +54,7 @@ function generateExtensionFormData(event) {
 
     formData.append("extcid", JSON.stringify(extcid));
     formData.append("extnumbers", JSON.stringify(extnumbers));
+    formData.append("smsemail", JSON.stringify(smsemail));
 
     formData.append("Submit", "Submit");
 }
